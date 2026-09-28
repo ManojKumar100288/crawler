@@ -34,7 +34,6 @@ function collectForm() {
     includeSubdomains: $('includeSubdomains').checked,
     checkExternalLinks: $('checkExternalLinks').checked,
     useSitemap: $('useSitemap').checked,
-    fullSite: $('fullSite').checked,
     scanMode: $('scanMode').value,
   };
   if ($('loginEnabled').checked) {
