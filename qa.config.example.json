@@ -1,0 +1,31 @@
+{
+  "baseUrl": "https://example.com",
+  "maxPages": 100,
+  "maxDepth": 4,
+  "sameOriginOnly": true,
+  "includeSubdomains": false,
+  "concurrency": 3,
+  "navTimeoutMs": 30000,
+  "slowPageMs": 5000,
+  "headless": true,
+  "ignorePatterns": [
+    "\\.(pdf|zip|jpg|jpeg|png|gif|svg|webp|mp4|mp3|css|js|ico|woff2?)($|\\?)",
+    "/logout",
+    "/signout",
+    "mailto:",
+    "tel:"
+  ],
+  "checkExternalLinks": true,
+  "login": {
+    "enabled": false,
+    "loginUrl": "https://example.com/login",
+    "usernameSelector": "#username",
+    "passwordSelector": "#password",
+    "submitSelector": "button[type=submit]",
+    "username": "YOUR_USERNAME",
+    "password": "YOUR_PASSWORD",
+    "successUrlIncludes": "/dashboard",
+    "waitAfterLoginMs": 2000
+  },
+  "outputDir": "./reports"
+}

@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Generated reports
+reports/
+
+# Secrets / local config (contains credentials)
+qa.config.json
+.env
+
+# Playwright browser cache (installed per-machine)
+.cache/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log

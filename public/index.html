@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>QA Crawler</title>
+  <style>
+    :root { --bg:#0f172a; --panel:#111827; --card:#1f2937; --line:#334155; --txt:#e5e7eb; --muted:#94a3b8; --accent:#2563eb; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, "Segoe UI", Arial, sans-serif; background:var(--bg); color:var(--txt); }
+    header { background:#1e293b; padding:16px 24px; border-bottom:1px solid var(--line); }
+    header h1 { margin:0; font-size:18px; }
+    header p { margin:4px 0 0; color:var(--muted); font-size:13px; }
+    .wrap { display:grid; grid-template-columns: 380px 1fr; gap:16px; padding:16px 24px; align-items:start; }
+    @media (max-width: 900px){ .wrap{ grid-template-columns:1fr; } }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
+    label { display:block; font-size:13px; color:var(--muted); margin:10px 0 4px; }
+    input[type=text], input[type=number], input[type=password], input[type=url] {
+      width:100%; padding:9px 10px; border-radius:8px; border:1px solid var(--line); background:#0b1220; color:var(--txt); font-size:14px;
+    }
+    .row { display:flex; gap:10px; }
+    .row > div { flex:1; }
+    .check { display:flex; align-items:center; gap:8px; margin-top:10px; font-size:14px; color:var(--txt); }
+    button { margin-top:16px; width:100%; padding:11px; border:0; border-radius:9px; background:var(--accent); color:#fff; font-size:15px; font-weight:600; cursor:pointer; }
+    button:disabled { opacity:.6; cursor:not-allowed; }
+    fieldset { border:1px solid var(--line); border-radius:9px; margin-top:14px; padding:8px 12px 12px; }
+    legend { color:var(--muted); font-size:12px; padding:0 6px; }
+    .log { background:#0b1220; border:1px solid var(--line); border-radius:9px; padding:12px; height:300px; overflow:auto; font-family: ui-monospace, Consolas, monospace; font-size:12.5px; white-space:pre-wrap; }
+    .cards { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+    .stat { background:#0b1220; border:1px solid var(--line); border-radius:9px; padding:10px 14px; min-width:110px; }
+    .stat b { display:block; font-size:22px; }
+    .stat span { color:var(--muted); font-size:12px; }
+    a.btnlink { display:inline-block; margin-top:12px; margin-right:10px; padding:9px 14px; background:#0b1220; border:1px solid var(--line); border-radius:8px; color:var(--txt); text-decoration:none; font-size:14px; }
+    a.btnlink:hover { border-color: var(--accent); }
+    .muted { color: var(--muted); font-size: 13px; }
+    .hidden { display:none; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🔎 QA Crawler</h1>
+    <p>Enter a website URL, choose options, and click Start. It crawls the site, tests every page, and produces a QA report.</p>
+  </header>
+
+  <div class="wrap">
+    <!-- Left: form -->
+    <div class="card">
+      <label for="baseUrl">Website URL</label>
+      <input id="baseUrl" type="url" placeholder="https://example.com" />
+
+      <div class="row">
+        <div>
+          <label for="maxPages">Max pages</label>
+          <input id="maxPages" type="number" value="50" min="1" />
+        </div>
+        <div>
+          <label for="maxDepth">Max depth</label>
+          <input id="maxDepth" type="number" value="3" min="1" />
+        </div>
+        <div>
+          <label for="concurrency">Concurrency</label>
+          <input id="concurrency" type="number" value="3" min="1" />
+        </div>
+      </div>
+
+      <div class="check"><input id="includeSubdomains" type="checkbox" /> <label for="includeSubdomains" style="margin:0">Include subdomains</label></div>
+      <div class="check"><input id="checkExternalLinks" type="checkbox" checked /> <label for="checkExternalLinks" style="margin:0">Check external links</label></div>
+
+      <fieldset>
+        <legend>Login (for post-login pages) — optional</legend>
+        <div class="check"><input id="loginEnabled" type="checkbox" /> <label for="loginEnabled" style="margin:0">Enable login</label></div>
+        <div id="loginFields" class="hidden">
+          <label for="loginUrl">Login page URL</label>
+          <input id="loginUrl" type="url" placeholder="https://example.com/login" />
+          <div class="row">
+            <div>
+              <label for="username">Username</label>
+              <input id="username" type="text" />
+            </div>
+            <div>
+              <label for="password">Password</label>
+              <input id="password" type="password" />
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label for="usernameSelector">Username selector</label>
+              <input id="usernameSelector" type="text" value="#username" />
+            </div>
+            <div>
+              <label for="passwordSelector">Password selector</label>
+              <input id="passwordSelector" type="text" value="#password" />
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label for="submitSelector">Submit selector</label>
+              <input id="submitSelector" type="text" value="button[type=submit]" />
+            </div>
+            <div>
+              <label for="successUrlIncludes">Success URL contains</label>
+              <input id="successUrlIncludes" type="text" placeholder="/dashboard" />
+            </div>
+          </div>
+        </div>
+      </fieldset>
+
+      <button id="startBtn">Start Crawl</button>
+    </div>
+
+    <!-- Right: results -->
+    <div class="card">
+      <div id="summary" class="hidden">
+        <div class="cards" id="statCards"></div>
+        <div id="reportLinks"></div>
+        <div id="authLine" class="muted"></div>
+      </div>
+      <label style="margin-top:0">Live progress</label>
+      <div id="log" class="log muted">Idle. Fill the form and click "Start Crawl".</div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
