@@ -33,6 +33,8 @@ function collectForm() {
     concurrency: $('concurrency').value,
     includeSubdomains: $('includeSubdomains').checked,
     checkExternalLinks: $('checkExternalLinks').checked,
+    useSitemap: $('useSitemap').checked,
+    fullSite: $('fullSite').checked,
   };
   if ($('loginEnabled').checked) {
     form.login = {
@@ -59,6 +61,7 @@ function showSummary(payload) {
     ['Clean', s.cleanPages, '#22c55e'],
     ['Total issues', s.totalIssues, '#e5e7eb'],
     ['Broken links', s.brokenExternalLinks, '#ef4444'],
+    ['Sitemap URLs', s.sitemapUrlsFound || 0, '#38bdf8'],
   ];
   statCards.innerHTML = cards
     .map(([label, val, color]) => `<div class="stat"><b style="color:${color}">${val ?? 0}</b><span>${label}</span></div>`)

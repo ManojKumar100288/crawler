@@ -94,6 +94,31 @@ In `qa.config.json`, the `login` block lets you match the actual form:
 }
 ```
 
+## Checking ALL URLs (full coverage)
+
+By default the crawler follows links (BFS) AND reads the site's `sitemap.xml`, so it
+also finds **orphan/unlinked pages** that a pure link-crawl would miss. It follows
+nested sitemap indexes automatically.
+
+To check the **whole site**, turn on **Full site** mode:
+
+- In the UI: tick **"Full site — check ALL URLs"**.
+- On the CLI: add `--full-site`.
+
+Full-site mode raises the page/depth limits automatically and forces sitemap use.
+
+```powershell
+node src/cli.js https://example.com --full-site
+```
+
+Notes:
+- Big sites can have tens of thousands of sitemap URLs (we've seen 100k+). Crawling
+  every one takes a real browser visit per page, so it can be slow. Raise
+  `--concurrency` and keep `--max-pages` sensible for a first run.
+- Orphan pages that are in NO sitemap and linked from NO page cannot be discovered
+  automatically — there's no way to know they exist. Feed them in directly if needed.
+- Use `--no-sitemap` to do a link-crawl only.
+
 ## Options
 
 | Flag | Meaning | Default |

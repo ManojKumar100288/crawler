@@ -3,6 +3,7 @@ import { chromium } from 'playwright';
 import { normalizeUrl, isInScope, isIgnored } from './urls.js';
 import { login } from './auth.js';
 import { inspectPage, checkLinkStatus } from './checks.js';
+import { collectSitemapUrls } from './sitemap.js';
 
 /**
  * Run a full crawl + QA pass.
@@ -45,6 +46,36 @@ export async function crawl(cfg, log = console.log) {
   const enqueued = new Set([start]);
   const visited = new Set();
   const externalToCheck = new Set();
+
+  // 2a. Seed from sitemap(s) so orphan / unlinked pages are also covered.
+  report.sitemap = { used: false, sitemapsChecked: [], urlsFound: 0, urlsSeeded: 0 };
+  if (cfg.useSitemap) {
+    log('[sitemap] discovering sitemap URLs…');
+    try {
+      const { urls, sitemapsChecked } = await collectSitemapUrls(context, cfg, log);
+      report.sitemap.used = true;
+      report.sitemap.sitemapsChecked = sitemapsChecked;
+      report.sitemap.urlsFound = urls.length;
+      let seeded = 0;
+      for (const u of urls) {
+        if (
+          !enqueued.has(u) &&
+          isInScope(u, cfg) &&
+          !isIgnored(u, cfg) &&
+          enqueued.size < cfg.maxPages
+        ) {
+          enqueued.add(u);
+          // depth 1: sitemap URLs are treated as direct entry points.
+          queue.push({ url: u, depth: 1 });
+          seeded++;
+        }
+      }
+      report.sitemap.urlsSeeded = seeded;
+      log(`[sitemap] seeded ${seeded} in-scope URLs from sitemap (found ${urls.length} total)`);
+    } catch (err) {
+      log(`[sitemap] skipped (error: ${err.message})`);
+    }
+  }
 
   async function processOne(item) {
     if (visited.has(item.url)) return;
@@ -136,5 +167,7 @@ function summarize(report) {
     issuesByType: byType,
     externalLinksChecked: report.externalLinks.length,
     brokenExternalLinks: brokenExternal,
+    sitemapUsed: report.sitemap ? report.sitemap.used : false,
+    sitemapUrlsFound: report.sitemap ? report.sitemap.urlsFound : 0,
   };
 }

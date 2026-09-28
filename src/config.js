@@ -20,6 +20,8 @@ const DEFAULTS = {
     'tel:',
   ],
   checkExternalLinks: true,
+  useSitemap: true,
+  fullSite: false,
   login: {
     enabled: false,
     loginUrl: null,
@@ -78,6 +80,18 @@ export function loadConfig({ configPath = null, cliOverrides = {} } = {}) {
   cfg.rootDomain = u.hostname.split('.').slice(-2).join('.');
 
   cfg.ignoreRegexes = (cfg.ignorePatterns || []).map((p) => new RegExp(p, 'i'));
+
+  // "Full site" mode: check ALL URLs. Raise limits and force sitemap use,
+  // unless the caller explicitly set higher values already.
+  if (cfg.fullSite) {
+    cfg.useSitemap = true;
+    if (!cliOverrides.maxPages && (!fileConfig || fileConfig.maxPages === undefined)) {
+      cfg.maxPages = Math.max(cfg.maxPages, 10000);
+    }
+    if (!cliOverrides.maxDepth && (!fileConfig || fileConfig.maxDepth === undefined)) {
+      cfg.maxDepth = Math.max(cfg.maxDepth, 50);
+    }
+  }
 
   return cfg;
 }

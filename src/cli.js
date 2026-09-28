@@ -24,6 +24,10 @@ function parseArgs(argv) {
       out.cliOverrides.includeSubdomains = true;
     } else if (a === '--no-external') {
       out.cliOverrides.checkExternalLinks = false;
+    } else if (a === '--no-sitemap') {
+      out.cliOverrides.useSitemap = false;
+    } else if (a === '--full-site') {
+      out.cliOverrides.fullSite = true;
     } else if (a === '--headed') {
       out.cliOverrides.headless = false;
     } else if (a === '--out') {
@@ -65,6 +69,8 @@ Options:
       --concurrency <n>     Parallel pages (default 3)
       --include-subdomains  Crawl subdomains of the root domain too
       --no-external         Skip external link reachability checks
+      --no-sitemap          Do not read sitemap.xml (link-crawl only)
+      --full-site           Check ALL URLs: raise limits + use sitemap
       --headed              Run browser with a visible window
       --out <dir>           Output directory for reports (default ./reports)
       --login               Enable login flow (needs login-url/username/password)

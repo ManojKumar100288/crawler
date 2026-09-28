@@ -93,6 +93,8 @@ function buildConfigFromForm(form) {
     concurrency: form.concurrency ? Number(form.concurrency) : undefined,
     includeSubdomains: !!form.includeSubdomains,
     checkExternalLinks: form.checkExternalLinks !== false,
+    useSitemap: form.useSitemap !== false,
+    fullSite: !!form.fullSite,
     outputDir: REPORTS_DIR,
     headless: true,
   };
