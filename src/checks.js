@@ -130,15 +130,38 @@ export async function inspectPage(context, url, cfg) {
   }
 
   // Collect links (for crawling + broken-link checks).
+  // Each link is tagged with the page region it came from: header / footer / main.
   try {
-    const hrefs = await page.$$eval('a[href]', (as) => as.map((a) => a.getAttribute('href')));
+    const rawLinks = await page.$$eval('a[href]', (as) =>
+      as.map((a) => {
+        // Walk up the DOM to find the nearest structural region.
+        let region = 'main';
+        let el = a;
+        while (el && el !== document.body) {
+          const tag = el.tagName ? el.tagName.toLowerCase() : '';
+          const role = (el.getAttribute && el.getAttribute('role')) || '';
+          const cls = (el.className && typeof el.className === 'string' ? el.className : '').toLowerCase();
+          const id = (el.id || '').toLowerCase();
+          if (tag === 'header' || role === 'banner' || /(^|[^a-z])header([^a-z]|$)|navbar|site-head|top-nav/.test(cls + ' ' + id)) {
+            region = 'header';
+            break;
+          }
+          if (tag === 'footer' || role === 'contentinfo' || /(^|[^a-z])footer([^a-z]|$)|site-foot|bottom-nav/.test(cls + ' ' + id)) {
+            region = 'footer';
+            break;
+          }
+          el = el.parentElement;
+        }
+        return { href: a.getAttribute('href'), region, text: (a.textContent || '').trim().slice(0, 80) };
+      })
+    );
     const seen = new Set();
-    for (const href of hrefs) {
-      const abs = normalizeUrl(href, url);
+    for (const raw of rawLinks) {
+      const abs = normalizeUrl(raw.href, url);
       if (!abs || seen.has(abs)) continue;
       if (isIgnored(abs, cfg)) continue;
       seen.add(abs);
-      result.links.push({ url: abs, type: classifyLink(abs, cfg) });
+      result.links.push({ url: abs, type: classifyLink(abs, cfg), region: raw.region, text: raw.text });
     }
   } catch {
     /* ignore */

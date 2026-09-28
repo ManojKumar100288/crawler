@@ -22,6 +22,9 @@ const DEFAULTS = {
   checkExternalLinks: true,
   useSitemap: true,
   fullSite: false,
+  // scanMode: 'full' (crawl whole site) | 'headerFooterHome' (only home page +
+  // its header/footer links).
+  scanMode: 'full',
   login: {
     enabled: false,
     loginUrl: null,

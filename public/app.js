@@ -35,6 +35,7 @@ function collectForm() {
     checkExternalLinks: $('checkExternalLinks').checked,
     useSitemap: $('useSitemap').checked,
     fullSite: $('fullSite').checked,
+    scanMode: $('scanMode').value,
   };
   if ($('loginEnabled').checked) {
     form.login = {
@@ -54,6 +55,8 @@ function collectForm() {
 function showSummary(payload) {
   summaryEl.classList.remove('hidden');
   const s = payload.summary || {};
+  // Home-page mode shows link counts by region; full mode shows sitemap count.
+  const homeMode = (s.homeLinksTotal || 0) > 0;
   const cards = [
     ['Pages', s.pagesCrawled, '#e5e7eb'],
     ['Errors', s.pagesWithErrors, '#ef4444'],
@@ -61,8 +64,15 @@ function showSummary(payload) {
     ['Clean', s.cleanPages, '#22c55e'],
     ['Total issues', s.totalIssues, '#e5e7eb'],
     ['Broken links', s.brokenExternalLinks, '#ef4444'],
-    ['Sitemap URLs', s.sitemapUrlsFound || 0, '#38bdf8'],
   ];
+  if (homeMode) {
+    cards.push(['Links checked', s.homeLinksTotal, '#38bdf8']);
+    cards.push(['Header', s.homeHeaderLinks, '#a78bfa']);
+    cards.push(['Footer', s.homeFooterLinks, '#a78bfa']);
+    cards.push(['Body', s.homeBodyLinks, '#a78bfa']);
+  } else {
+    cards.push(['Sitemap URLs', s.sitemapUrlsFound || 0, '#38bdf8']);
+  }
   statCards.innerHTML = cards
     .map(([label, val, color]) => `<div class="stat"><b style="color:${color}">${val ?? 0}</b><span>${label}</span></div>`)
     .join('');

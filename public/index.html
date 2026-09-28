@@ -48,6 +48,12 @@
       <label for="baseUrl">Website URL</label>
       <input id="baseUrl" type="url" placeholder="https://example.com" />
 
+      <label for="scanMode">Scan mode</label>
+      <select id="scanMode" style="width:100%; padding:9px 10px; border-radius:8px; border:1px solid var(--line); background:#0b1220; color:var(--txt); font-size:14px;">
+        <option value="full">Full site — crawl all pages</option>
+        <option value="homeAllLinks">Home page only — check ALL links (header + footer + body)</option>
+      </select>
+
       <div class="row">
         <div>
           <label for="maxPages">Max pages</label>

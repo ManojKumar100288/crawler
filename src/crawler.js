@@ -40,6 +40,19 @@ export async function crawl(cfg, log = console.log) {
     }
   }
 
+  // Special mode: only the home page, but check ALL its links
+  // (header + footer + body/main).
+  if (cfg.scanMode === 'homeAllLinks' || cfg.scanMode === 'headerFooterHome') {
+    await runHomeAllLinks(context, cfg, report, log);
+    await context.close();
+    await browser.close();
+    const finishedAtHF = new Date();
+    report.finishedAt = finishedAtHF.toISOString();
+    report.durationMs = finishedAtHF - startedAt;
+    report.summary = summarize(report);
+    return report;
+  }
+
   // 2. BFS crawl.
   const start = normalizeUrl(cfg.baseUrl, cfg.baseUrl);
   const queue = [{ url: start, depth: 0 }];
@@ -137,6 +150,62 @@ export async function crawl(cfg, log = console.log) {
   return report;
 }
 
+/**
+ * Home-page mode: inspect only the home page, then check EVERY link found on it
+ * — header, footer, and body/main — for reachability. No further crawling.
+ */
+async function runHomeAllLinks(context, cfg, report, log) {
+  const home = normalizeUrl(cfg.baseUrl, cfg.baseUrl);
+  log(`[home] inspecting home page: ${home}`);
+  const homeResult = await inspectPage(context, home, cfg);
+  homeResult.depth = 0;
+  report.pages.push(homeResult);
+
+  // All links on the home page, tagged by region (header / footer / main).
+  const allLinks = homeResult.links;
+  const byRegion = { header: 0, footer: 0, main: 0 };
+  for (const l of allLinks) byRegion[l.region] = (byRegion[l.region] || 0) + 1;
+  log(`[home] found ${allLinks.length} links total — header:${byRegion.header} footer:${byRegion.footer} body:${byRegion.main}`);
+
+  report.homeLinks = {
+    total: allLinks.length,
+    header: byRegion.header,
+    footer: byRegion.footer,
+    body: byRegion.main,
+    checked: [],
+  };
+
+  // Check each link's reachability (status code), internal + external alike.
+  for (let i = 0; i < allLinks.length; i += cfg.concurrency) {
+    const slice = allLinks.slice(i, i + cfg.concurrency);
+    const results = await Promise.all(
+      slice.map(async (l) => {
+        const status = await checkLinkStatus(context, l.url, cfg);
+        return { ...l, status: status.status, ok: status.ok, error: status.error };
+      })
+    );
+    for (const r of results) {
+      report.homeLinks.checked.push(r);
+      const regionLabel = r.region === 'main' ? 'BODY' : r.region.toUpperCase();
+      if (!r.ok) {
+        log(`[link] ❌ ${regionLabel} ${r.status ?? 'FAIL'} ${r.url}`);
+        homeResult.issues.push({
+          severity: 'error',
+          type: `broken-${r.region === 'main' ? 'body' : r.region}-link`,
+          message: `Broken ${regionLabel.toLowerCase()} link (${r.status ?? r.error}): ${r.url}${r.text ? ' [' + r.text + ']' : ''}`,
+        });
+      } else {
+        log(`[link] ✅ ${regionLabel} ${r.status} ${r.url}`);
+      }
+    }
+  }
+
+  // Feed external results into the summary's broken-external tally.
+  report.externalLinks = report.homeLinks.checked
+    .filter((r) => r.type === 'external')
+    .map((r) => ({ url: r.url, status: r.status, ok: r.ok, error: r.error }));
+}
+
 function summarize(report) {
   let errorPages = 0;
   let warnPages = 0;
@@ -169,5 +238,9 @@ function summarize(report) {
     brokenExternalLinks: brokenExternal,
     sitemapUsed: report.sitemap ? report.sitemap.used : false,
     sitemapUrlsFound: report.sitemap ? report.sitemap.urlsFound : 0,
+    homeLinksTotal: report.homeLinks ? report.homeLinks.total : 0,
+    homeHeaderLinks: report.homeLinks ? report.homeLinks.header : 0,
+    homeFooterLinks: report.homeLinks ? report.homeLinks.footer : 0,
+    homeBodyLinks: report.homeLinks ? report.homeLinks.body : 0,
   };
 }

@@ -95,6 +95,7 @@ function buildConfigFromForm(form) {
     checkExternalLinks: form.checkExternalLinks !== false,
     useSitemap: form.useSitemap !== false,
     fullSite: !!form.fullSite,
+    scanMode: form.scanMode === 'homeAllLinks' ? 'homeAllLinks' : 'full',
     outputDir: REPORTS_DIR,
     headless: true,
   };

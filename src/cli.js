@@ -28,6 +28,8 @@ function parseArgs(argv) {
       out.cliOverrides.useSitemap = false;
     } else if (a === '--full-site') {
       out.cliOverrides.fullSite = true;
+    } else if (a === '--home-links') {
+      out.cliOverrides.scanMode = 'homeAllLinks';
     } else if (a === '--headed') {
       out.cliOverrides.headless = false;
     } else if (a === '--out') {
@@ -71,6 +73,7 @@ Options:
       --no-external         Skip external link reachability checks
       --no-sitemap          Do not read sitemap.xml (link-crawl only)
       --full-site           Check ALL URLs: raise limits + use sitemap
+      --home-links          Home page only: check ALL its links (header+footer+body)
       --headed              Run browser with a visible window
       --out <dir>           Output directory for reports (default ./reports)
       --login               Enable login flow (needs login-url/username/password)
