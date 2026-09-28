@@ -181,29 +181,40 @@ async function runHomeAllLinks(context, cfg, report, log) {
     const results = await Promise.all(
       slice.map(async (l) => {
         const status = await checkLinkStatus(context, l.url, cfg);
-        return { ...l, status: status.status, ok: status.ok, error: status.error };
+        return { ...l, status: status.status, ok: status.ok, blocked: status.blocked, error: status.error };
       })
     );
     for (const r of results) {
       report.homeLinks.checked.push(r);
       const regionLabel = r.region === 'main' ? 'BODY' : r.region.toUpperCase();
-      if (!r.ok) {
+      const bodyRegion = r.region === 'main' ? 'body' : r.region;
+      if (r.ok) {
+        log(`[link] ✅ ${regionLabel} ${r.status} ${r.url}`);
+      } else if (r.blocked) {
+        // Server blocked the automated request (403/401/429). The link most
+        // likely works in a real browser — flag as info, not an error.
+        log(`[link] 🔒 ${regionLabel} ${r.status} (blocked by site, likely OK in browser) ${r.url}`);
+        homeResult.issues.push({
+          severity: 'info',
+          type: 'blocked-link',
+          message: `${regionLabel} link returned ${r.status} to the checker (bot-protected; verify manually): ${r.url}${r.text ? ' [' + r.text + ']' : ''}`,
+        });
+      } else {
         log(`[link] ❌ ${regionLabel} ${r.status ?? 'FAIL'} ${r.url}`);
         homeResult.issues.push({
           severity: 'error',
-          type: `broken-${r.region === 'main' ? 'body' : r.region}-link`,
+          type: `broken-${bodyRegion}-link`,
           message: `Broken ${regionLabel.toLowerCase()} link (${r.status ?? r.error}): ${r.url}${r.text ? ' [' + r.text + ']' : ''}`,
         });
-      } else {
-        log(`[link] ✅ ${regionLabel} ${r.status} ${r.url}`);
       }
     }
   }
 
-  // Feed external results into the summary's broken-external tally.
+  // Feed external results into the summary. "blocked" links count as ok=true so
+  // they are NOT reported as broken (they work in a real browser).
   report.externalLinks = report.homeLinks.checked
     .filter((r) => r.type === 'external')
-    .map((r) => ({ url: r.url, status: r.status, ok: r.ok, error: r.error }));
+    .map((r) => ({ url: r.url, status: r.status, ok: r.ok || r.blocked, blocked: r.blocked, error: r.error }));
 }
 
 function summarize(report) {
@@ -227,6 +238,12 @@ function summarize(report) {
     if (!l.ok) brokenExternal++;
   }
 
+  // Count blocked (bot-protected) links across home-links checks.
+  let blockedLinks = 0;
+  if (report.homeLinks) {
+    blockedLinks = report.homeLinks.checked.filter((r) => r.blocked).length;
+  }
+
   return {
     pagesCrawled: report.pages.length,
     pagesWithErrors: errorPages,
@@ -242,5 +259,6 @@ function summarize(report) {
     homeHeaderLinks: report.homeLinks ? report.homeLinks.header : 0,
     homeFooterLinks: report.homeLinks ? report.homeLinks.footer : 0,
     homeBodyLinks: report.homeLinks ? report.homeLinks.body : 0,
+    blockedLinks,
   };
 }

@@ -171,11 +171,68 @@ export async function inspectPage(context, url, cfg) {
   return result;
 }
 
+// Browser-like headers so bot-protected sites (social media, gov portals) don't
+// reject our reachability checks with 403/400 for a link that actually works.
+const BROWSER_HEADERS = {
+  'User-Agent':
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9',
+};
+
+// Status codes that mean "the server blocked our automated request", NOT that the
+// link is broken. These are treated as "blocked/protected", not errors.
+const BLOCKED_STATUSES = new Set([401, 403, 405, 429]);
+
+// Domains known to aggressively block bots (they return odd codes like 400/999
+// to automated requests, but work fine in a real browser). Any non-2xx from
+// these is treated as "blocked", not broken.
+const BOT_HOSTILE_HOSTS = [
+  'facebook.com',
+  'instagram.com',
+  'x.com',
+  'twitter.com',
+  'linkedin.com',
+  'threads.net',
+];
+
+function isBotHostileHost(url) {
+  try {
+    const h = new URL(url).hostname.replace(/^www\./, '');
+    return BOT_HOSTILE_HOSTS.some((d) => h === d || h.endsWith('.' + d));
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Lightweight HEAD/GET check for a link's reachability (used for external + broken-link checks).
- * Uses the browser context's request API so cookies/session are shared.
+ * Check a link's reachability. Returns:
+ *   { url, status, ok, blocked, error }
+ * - ok: true if status < 400 (link works)
+ * - blocked: true if the server rejected the automated request (401/403/429/…)
+ *   — the link is likely fine in a real browser, so we don't count it as broken.
  */
 export async function checkLinkStatus(context, url, cfg) {
+  try {
+    const res = await context.request.get(url, {
+      timeout: cfg.navTimeoutMs,
+      maxRedirects: 5,
+      headers: BROWSER_HEADERS,
+    });
+    const status = res.status();
+    if (res.ok()) return { url, status, ok: true, blocked: false };
+    if (BLOCKED_STATUSES.has(status) || isBotHostileHost(url)) {
+      // Server actively blocked the bot — not a broken link.
+      return { url, status, ok: false, blocked: true };
+    }
+    return { url, status, ok: false, blocked: false };
+  } catch (err) {
+    return { url, status: null, ok: false, blocked: false, error: err.message };
+  }
+}
+
+// Old signature kept for the full-crawl external-link path.
+export async function _legacyCheckLinkStatus(context, url, cfg) {
   try {
     const res = await context.request.get(url, { timeout: cfg.navTimeoutMs, maxRedirects: 5 });
     return { url, status: res.status(), ok: res.ok() };

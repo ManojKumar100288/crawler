@@ -18,6 +18,13 @@ const DEFAULTS = {
     '/signout',
     'mailto:',
     'tel:',
+    // OAuth / SSO / auth-redirect endpoints are not meant to be hit directly;
+    // hitting them returns 5xx/redirect errors that are false positives.
+    '/oauth',
+    '/authorize',
+    '/auth/realms',
+    'response_type=',
+    'redirect_uri=',
   ],
   checkExternalLinks: true,
   useSitemap: true,

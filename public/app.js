@@ -66,6 +66,7 @@ function showSummary(payload) {
   ];
   if (homeMode) {
     cards.push(['Links checked', s.homeLinksTotal, '#38bdf8']);
+    cards.push(['Blocked (bot-protected)', s.blockedLinks || 0, '#38bdf8']);
     cards.push(['Header', s.homeHeaderLinks, '#a78bfa']);
     cards.push(['Footer', s.homeFooterLinks, '#a78bfa']);
     cards.push(['Body', s.homeBodyLinks, '#a78bfa']);
