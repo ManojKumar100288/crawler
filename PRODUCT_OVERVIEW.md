@@ -111,18 +111,49 @@ Fly.io). See section 8.
 
 ---
 
-## 7. Technology
+## 7. Technology Stack
 
-| Layer | Technology |
-|-------|------------|
-| Browser automation | Playwright (Chromium) |
-| Runtime | Node.js 18+ |
-| Web server / UI | Node built-in `http` (no heavy framework), Server-Sent Events for live progress |
-| Front end | Plain HTML/CSS/JS (no build step) |
-| Packaging | Docker (official Playwright base image) |
+### 7.1 Backend
 
-Design choices kept it **dependency-light** (one runtime dependency: Playwright)
-so it's easy to install, run, and deploy.
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| Runtime | Node.js 18+ (ES modules) | Runs the whole application |
+| Web/API server | Node.js built-in `http` module | Serves the UI and exposes the API — no Express/heavy framework |
+| Browser automation | Playwright (Chromium) | Opens every page/link in a real browser to detect errors |
+| Crawl engine | Custom module (`src/crawler.js`) | Breadth-first crawl, concurrency control, queue management |
+| Sitemap discovery | Custom module (`src/sitemap.js`) | Reads `robots.txt` + `sitemap.xml` (incl. nested indexes) |
+| Page checks | Custom module (`src/checks.js`) | HTTP status, JS/console errors, broken images/links, timings |
+| Report generator | Custom module (`src/report.js`) | Produces the HTML + JSON reports |
+| Live progress | Server-Sent Events (SSE) | Streams crawl progress to the browser in real time |
+| Packaging | Docker (official Playwright base image) | Containerised deployment |
+
+> **Only one external dependency: Playwright.** Everything else uses Node's
+> standard library, which keeps the tool lightweight and easy to deploy.
+
+### 7.2 Frontend
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| Markup | HTML5 (`public/index.html`) | Single-page UI structure |
+| Styling | Plain CSS3 (gradients, glassmorphism, flex/grid, animations) | Modern dark-theme design — no CSS framework |
+| Logic | Vanilla JavaScript (`public/app.js`) | Form handling, live log, summary rendering |
+| Live updates | `EventSource` (SSE client) | Receives real-time progress from the server |
+| Build step | None | Served as static files directly — no React/Vue/webpack |
+
+### 7.3 APIs
+
+The server exposes a small internal REST + SSE API (consumed by the UI):
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `POST` | `/api/crawl` | Start a crawl with the submitted options; returns a `jobId` |
+| `GET` | `/api/progress?jobId=...` | Server-Sent Events stream of live progress + final result |
+| `GET` | `/reports/<file>` | Serves the generated HTML/JSON report files |
+| `GET` | `/`, `/app.js` | Serves the UI (static files) |
+
+**External / third-party APIs used:** none. The tool does **not** depend on any
+paid or external API. It only makes standard HTTP(S) requests to the website
+being tested (via Playwright's browser and request APIs) to crawl and check it.
 
 ---
 
@@ -157,13 +188,3 @@ auth / VPN / SSO) and restricted to the QA team. Credentials are never committed
 - Functional test flows (not just link health): verify buttons/forms work
 - CI integration (fail a build when critical pages break)
 - Trend history (compare today's run vs last week's)
-
----
-
-## 10. Quick facts for the CTO
-
-- **Input:** a URL. **Output:** a full QA report in minutes.
-- **Coverage:** every linked page + sitemap pages, each opened in a real browser.
-- **Accuracy:** distinguishes genuinely broken links from bot-blocked ones.
-- **Footprint:** lightweight, containerised, deployable on existing infra.
-- **Extensible:** CLI + JSON output make it CI-ready.
