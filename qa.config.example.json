@@ -16,6 +16,14 @@
     "tel:"
   ],
   "checkExternalLinks": true,
+  "useSitemap": true,
+  "scanMode": "full",
+  "ai": {
+    "enabled": false,
+    "apiKey": "YOUR_OPENAI_API_KEY",
+    "model": "gpt-4o-mini",
+    "baseUrl": "https://api.openai.com/v1"
+  },
   "login": {
     "enabled": false,
     "loginUrl": "https://example.com/login",

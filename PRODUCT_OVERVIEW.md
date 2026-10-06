@@ -167,6 +167,39 @@ If persistent storage is needed in the future (e.g., crawl history, trend
 comparison), a lightweight solution such as SQLite or a JSON file store could be
 added without changing the existing architecture.
 
+### 7.5 AI integration
+
+**Available now — AI Report Summary.** The tool can optionally send the crawl
+results to a Large Language Model (OpenAI-compatible API) and generate a clear,
+prioritized plain-English summary that a CTO or PM can read in seconds — e.g.
+"The site is healthy overall; the /login page throws a JavaScript error (fix
+first); 5 footer links are bot-protected and likely fine." The summary appears
+in the UI, the HTML report, and the CLI output.
+
+- **How it works:** one API call after the crawl, sending a compact version of
+  the report. No raw page data is stored.
+- **Providers:** OpenAI (default), Azure OpenAI, or any OpenAI-compatible
+  endpoint (configurable `baseUrl` + `model`).
+- **Optional & safe:** disabled by default. If no API key is provided, the tool
+  runs exactly as before with no AI. The key can be supplied per-run (UI/CLI) or
+  set once on the server via the `OPENAI_API_KEY` environment variable.
+
+**Where AI can be used (roadmap).** The architecture allows AI to be added at
+several points:
+
+| Area | What AI does | Status |
+|------|--------------|--------|
+| Report summary | Plain-English, prioritized summary of findings | ✅ Done |
+| Visual/UI testing | Vision model reviews page screenshots for broken layout, overlapping text, misalignment | Planned |
+| Content validation | Detects placeholder/dummy text, wrong language, title–content mismatch | Planned |
+| Issue severity classification | AI ranks issues Critical / Major / Minor / Info instead of fixed rules | Planned |
+| Test suggestions | AI reads the site structure and suggests functional tests to run next | Planned |
+| Accessibility (a11y) review | AI checks pages for WCAG issues (alt text, contrast, ARIA) — valuable for government sites | Planned |
+
+> **Cost note:** AI features are opt-in and use pay-per-use APIs. The report
+> summary is a single low-cost call per crawl. Per-page features (visual/content
+> checks) scale with the number of pages, so they can be enabled selectively.
+
 ---
 
 ## 8. Deployment options
@@ -191,6 +224,7 @@ auth / VPN / SSO) and restricted to the QA team. Credentials are never committed
 - Real-browser link checking with false-positive handling for bot-protected sites
 - Live-progress Web UI + CLI
 - HTML + JSON reports
+- AI-powered report summary (optional, OpenAI-compatible)
 - Docker + deploy docs
 - One-click Windows launcher
 

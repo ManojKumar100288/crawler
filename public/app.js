@@ -13,6 +13,11 @@ $('loginEnabled').addEventListener('change', (e) => {
   $('loginFields').classList.toggle('hidden', !e.target.checked);
 });
 
+// Toggle AI fields.
+$('aiEnabled').addEventListener('change', (e) => {
+  $('aiFields').classList.toggle('hidden', !e.target.checked);
+});
+
 function log(line, cls) {
   if (logEl.classList.contains('muted')) {
     logEl.classList.remove('muted');
@@ -36,6 +41,13 @@ function collectForm() {
     useSitemap: $('useSitemap').checked,
     scanMode: $('scanMode').value,
   };
+  if ($('aiEnabled').checked) {
+    form.ai = {
+      enabled: true,
+      apiKey: $('aiApiKey').value.trim(),
+      model: $('aiModel').value.trim() || 'gpt-4o-mini',
+    };
+  }
   if ($('loginEnabled').checked) {
     form.login = {
       enabled: true,
@@ -80,6 +92,15 @@ function showSummary(payload) {
         `<div class="stat" style="--sc:${color}"><b>${val ?? 0}</b><span>${icon} ${label}</span></div>`
     )
     .join('');
+
+  // AI summary (if generated).
+  const aiBox = $('aiSummaryBox');
+  if (payload.aiSummary) {
+    aiBox.textContent = '🤖 AI Summary\n\n' + payload.aiSummary;
+    aiBox.classList.remove('hidden');
+  } else {
+    aiBox.classList.add('hidden');
+  }
 
   reportLinks.innerHTML =
     `<a class="btnlink" href="${payload.htmlReport}" target="_blank"><span>📄</span> Open HTML report</a>` +

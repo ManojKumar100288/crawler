@@ -96,6 +96,18 @@ function buildConfigFromForm(form) {
     useSitemap: form.useSitemap !== false,
     fullSite: !!form.fullSite,
     scanMode: form.scanMode === 'homeAllLinks' ? 'homeAllLinks' : 'full',
+    ai: (() => {
+      // API key can come from the form OR from the OPENAI_API_KEY env var on the host.
+      const key = (form.ai && form.ai.apiKey) || process.env.OPENAI_API_KEY || null;
+      const wantAi = (form.ai && form.ai.enabled) || !!process.env.OPENAI_API_KEY;
+      if (!wantAi || !key) return { enabled: false };
+      return {
+        enabled: true,
+        apiKey: key,
+        model: (form.ai && form.ai.model) || process.env.OPENAI_MODEL || 'gpt-4o-mini',
+        baseUrl: (form.ai && form.ai.baseUrl) || process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
+      };
+    })(),
     outputDir: REPORTS_DIR,
     headless: true,
   };
@@ -133,6 +145,7 @@ async function runCrawlJob(job, form) {
     finishJob(job, {
       summary: report.summary,
       auth: report.auth,
+      aiSummary: report.aiSummary || null,
       htmlReport: '/reports/' + path.basename(htmlPath),
       jsonReport: '/reports/' + path.basename(jsonPath),
     });

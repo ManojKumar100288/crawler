@@ -170,6 +170,18 @@
       <div class="check"><input id="useSitemap" type="checkbox" checked /> <label for="useSitemap">Use sitemap.xml (find orphan/unlinked pages)</label></div>
 
       <fieldset>
+        <legend>🤖 AI summary (optional)</legend>
+        <div class="check"><input id="aiEnabled" type="checkbox" /> <label for="aiEnabled">Generate AI summary of the report</label></div>
+        <div id="aiFields" class="hidden">
+          <label for="aiApiKey">OpenAI API key</label>
+          <input id="aiApiKey" type="password" placeholder="sk-... (leave blank to use server's key)" />
+          <label for="aiModel">Model</label>
+          <input id="aiModel" type="text" value="gpt-4o-mini" />
+          <div class="hint">Key is used only for this request and is not stored. If the server already has a key set, you can leave this blank.</div>
+        </div>
+      </fieldset>
+
+      <fieldset>
         <legend>🔐 Login (for post-login pages) — optional</legend>
         <div class="check"><input id="loginEnabled" type="checkbox" /> <label for="loginEnabled">Enable login</label></div>
         <div id="loginFields" class="hidden">
@@ -218,6 +230,7 @@
 
       <div id="summary" class="hidden">
         <div class="cards" id="statCards"></div>
+        <div id="aiSummaryBox" class="hidden" style="background:linear-gradient(135deg, rgba(59,130,246,.12), rgba(99,102,241,.08)); border:1px solid rgba(59,130,246,.3); border-radius:14px; padding:16px 20px; margin:0 0 16px; line-height:1.6; font-size:13.5px; white-space:pre-wrap;"></div>
         <div class="report-links" id="reportLinks"></div>
         <div id="authLine" class="auth-line"></div>
       </div>

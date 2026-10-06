@@ -4,6 +4,7 @@ import { normalizeUrl, isInScope, isIgnored } from './urls.js';
 import { login } from './auth.js';
 import { inspectPage, checkLinkStatus } from './checks.js';
 import { collectSitemapUrls } from './sitemap.js';
+import { generateAiSummary } from './ai-summary.js';
 
 /**
  * Run a full crawl + QA pass.
@@ -50,6 +51,7 @@ export async function crawl(cfg, log = console.log) {
     report.finishedAt = finishedAtHF.toISOString();
     report.durationMs = finishedAtHF - startedAt;
     report.summary = summarize(report);
+    report.aiSummary = await generateAiSummary(report, cfg, log);
     return report;
   }
 
@@ -146,6 +148,7 @@ export async function crawl(cfg, log = console.log) {
   report.finishedAt = finishedAt.toISOString();
   report.durationMs = finishedAt - startedAt;
   report.summary = summarize(report);
+  report.aiSummary = await generateAiSummary(report, cfg, log);
 
   return report;
 }
@@ -197,7 +200,7 @@ async function runHomeAllLinks(context, cfg, report, log) {
         homeResult.issues.push({
           severity: 'info',
           type: 'blocked-link',
-          message: `${regionLabel} link returned ${r.status} to the checker (bot-protected; verify manually): ${r.url}${r.text ? ' [' + r.text + ']' : ''}`,
+          message: `Likely OK — this ${regionLabel.toLowerCase()} link returned HTTP ${r.status} to the automated checker because the site blocks bots. It usually works in a normal browser. Please open it manually to confirm: ${r.url}${r.text ? ' [' + r.text + ']' : ''}`,
         });
       } else {
         log(`[link] ❌ ${regionLabel} ${r.status ?? 'FAIL'} ${r.url}`);

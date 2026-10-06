@@ -32,6 +32,13 @@ const DEFAULTS = {
   // scanMode: 'full' (crawl whole site) | 'headerFooterHome' (only home page +
   // its header/footer links).
   scanMode: 'full',
+  // AI-powered report summary (optional). Disabled unless an API key is set.
+  ai: {
+    enabled: false,
+    apiKey: null,
+    model: 'gpt-4o-mini',
+    baseUrl: 'https://api.openai.com/v1',
+  },
   login: {
     enabled: false,
     loginUrl: null,

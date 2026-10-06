@@ -115,6 +115,8 @@ function renderHtml(report, cfg) {
     <div class="card"><b style="color:#d33">${s.brokenExternalLinks}</b><span>Broken external links</span></div>
   </div>
 
+  ${report.aiSummary ? `<h2>🤖 AI Summary</h2><div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:16px 20px;margin:12px 0;color:#0c4a6e;line-height:1.6;font-size:14px;white-space:pre-wrap">${esc(report.aiSummary)}</div>` : ''}
+
   <h2>Issues by type</h2>
   <table><thead><tr><th>Type</th><th>Count</th></tr></thead><tbody>${typeRows || '<tr><td colspan=2><em>None</em></td></tr>'}</tbody></table>
 

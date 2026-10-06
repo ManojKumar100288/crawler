@@ -30,6 +30,13 @@ function parseArgs(argv) {
       out.cliOverrides.fullSite = true;
     } else if (a === '--home-links') {
       out.cliOverrides.scanMode = 'homeAllLinks';
+    } else if (a === '--ai-key') {
+      out.cliOverrides.ai = out.cliOverrides.ai || {};
+      out.cliOverrides.ai.enabled = true;
+      out.cliOverrides.ai.apiKey = args[++i];
+    } else if (a === '--ai-model') {
+      out.cliOverrides.ai = out.cliOverrides.ai || {};
+      out.cliOverrides.ai.model = args[++i];
     } else if (a === '--headed') {
       out.cliOverrides.headless = false;
     } else if (a === '--out') {
@@ -74,6 +81,8 @@ Options:
       --no-sitemap          Do not read sitemap.xml (link-crawl only)
       --full-site           Check ALL URLs: raise limits + use sitemap
       --home-links          Home page only: check ALL its links (header+footer+body)
+      --ai-key <key>        OpenAI API key (enables AI report summary)
+      --ai-model <model>    AI model name (default: gpt-4o-mini)
       --headed              Run browser with a visible window
       --out <dir>           Output directory for reports (default ./reports)
       --login               Enable login flow (needs login-url/username/password)
@@ -119,6 +128,11 @@ async function main() {
   console.log(`Total issues:         ${s.totalIssues}`);
   console.log(`Broken external links:${s.brokenExternalLinks}`);
   console.log('======================');
+  if (report.aiSummary) {
+    console.log('\n===== 🤖 AI SUMMARY =====');
+    console.log(report.aiSummary);
+    console.log('=========================');
+  }
   console.log(`\n📄 HTML report: ${htmlPath}`);
   console.log(`📄 JSON report: ${jsonPath}\n`);
 
