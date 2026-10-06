@@ -155,6 +155,18 @@ The server exposes a small internal REST + SSE API (consumed by the UI):
 paid or external API. It only makes standard HTTP(S) requests to the website
 being tested (via Playwright's browser and request APIs) to crawl and check it.
 
+### 7.4 Database
+
+**None.** This tool does not use any database (no SQL, NoSQL, Redis, SQLite, or
+any other data store). All data lives in memory during a crawl and is written to
+flat files (JSON + HTML reports in the `./reports/` directory) when the crawl
+completes. There is nothing to install, configure, or maintain on the database
+side.
+
+If persistent storage is needed in the future (e.g., crawl history, trend
+comparison), a lightweight solution such as SQLite or a JSON file store could be
+added without changing the existing architecture.
+
 ---
 
 ## 8. Deployment options
