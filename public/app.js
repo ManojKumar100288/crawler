@@ -56,30 +56,34 @@ function showSummary(payload) {
   const s = payload.summary || {};
   // Home-page mode shows link counts by region; full mode shows sitemap count.
   const homeMode = (s.homeLinksTotal || 0) > 0;
+  // [label, value, accent color, icon]
   const cards = [
-    ['Pages', s.pagesCrawled, '#e5e7eb'],
-    ['Errors', s.pagesWithErrors, '#ef4444'],
-    ['Warnings', s.pagesWithWarnings, '#f59e0b'],
-    ['Clean', s.cleanPages, '#22c55e'],
-    ['Total issues', s.totalIssues, '#e5e7eb'],
-    ['Broken links', s.brokenExternalLinks, '#ef4444'],
+    ['Pages', s.pagesCrawled, '#3b82f6', '📄'],
+    ['Errors', s.pagesWithErrors, '#ef4444', '⛔'],
+    ['Warnings', s.pagesWithWarnings, '#f59e0b', '⚠️'],
+    ['Clean', s.cleanPages, '#22c55e', '✅'],
+    ['Total issues', s.totalIssues, '#e5e7eb', '🧩'],
+    ['Broken links', s.brokenExternalLinks, '#ef4444', '🔗'],
   ];
   if (homeMode) {
-    cards.push(['Links checked', s.homeLinksTotal, '#38bdf8']);
-    cards.push(['Blocked (bot-protected)', s.blockedLinks || 0, '#38bdf8']);
-    cards.push(['Header', s.homeHeaderLinks, '#a78bfa']);
-    cards.push(['Footer', s.homeFooterLinks, '#a78bfa']);
-    cards.push(['Body', s.homeBodyLinks, '#a78bfa']);
+    cards.push(['Links checked', s.homeLinksTotal, '#38bdf8', '🔎']);
+    cards.push(['Blocked (bot-protected)', s.blockedLinks || 0, '#38bdf8', '🔒']);
+    cards.push(['Header', s.homeHeaderLinks, '#a78bfa', '🔝']);
+    cards.push(['Footer', s.homeFooterLinks, '#a78bfa', '🔻']);
+    cards.push(['Body', s.homeBodyLinks, '#a78bfa', '📰']);
   } else {
-    cards.push(['Sitemap URLs', s.sitemapUrlsFound || 0, '#38bdf8']);
+    cards.push(['Sitemap URLs', s.sitemapUrlsFound || 0, '#38bdf8', '🗺️']);
   }
   statCards.innerHTML = cards
-    .map(([label, val, color]) => `<div class="stat"><b style="color:${color}">${val ?? 0}</b><span>${label}</span></div>`)
+    .map(
+      ([label, val, color, icon]) =>
+        `<div class="stat" style="--sc:${color}"><b>${val ?? 0}</b><span>${icon} ${label}</span></div>`
+    )
     .join('');
 
   reportLinks.innerHTML =
-    `<a class="btnlink" href="${payload.htmlReport}" target="_blank">📄 Open HTML report</a>` +
-    `<a class="btnlink" href="${payload.jsonReport}" target="_blank">{ } JSON report</a>`;
+    `<a class="btnlink" href="${payload.htmlReport}" target="_blank"><span>📄</span> Open HTML report</a>` +
+    `<a class="btnlink" href="${payload.jsonReport}" target="_blank"><span>{ }</span> JSON report</a>`;
 
   if (payload.auth && payload.auth.attempted) {
     authLine.textContent = (payload.auth.ok ? '✅ ' : '⚠️ ') + 'Auth: ' + payload.auth.message;
@@ -96,7 +100,7 @@ async function start() {
   }
 
   startBtn.disabled = true;
-  startBtn.textContent = 'Crawling…';
+  startBtn.innerHTML = '<span class="spinner"></span> Crawling…';
   summaryEl.classList.add('hidden');
   logEl.classList.add('muted');
   logEl.textContent = 'Starting…';
@@ -135,7 +139,7 @@ async function start() {
 
 function resetBtn() {
   startBtn.disabled = false;
-  startBtn.textContent = 'Start Crawl';
+  startBtn.innerHTML = '<span class="ic">🚀</span> Start Crawl';
 }
 
 startBtn.addEventListener('click', start);

@@ -3,58 +3,154 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>QA Crawler</title>
+  <title>QA Crawler — Automated Website QA</title>
   <style>
-    :root { --bg:#0f172a; --panel:#111827; --card:#1f2937; --line:#334155; --txt:#e5e7eb; --muted:#94a3b8; --accent:#2563eb; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444; }
-    * { box-sizing: border-box; }
-    body { margin:0; font-family: system-ui, "Segoe UI", Arial, sans-serif; background:var(--bg); color:var(--txt); }
-    header { background:#1e293b; padding:16px 24px; border-bottom:1px solid var(--line); }
-    header h1 { margin:0; font-size:18px; }
-    header p { margin:4px 0 0; color:var(--muted); font-size:13px; }
-    .wrap { display:grid; grid-template-columns: 380px 1fr; gap:16px; padding:16px 24px; align-items:start; }
-    @media (max-width: 900px){ .wrap{ grid-template-columns:1fr; } }
-    .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
-    label { display:block; font-size:13px; color:var(--muted); margin:10px 0 4px; }
-    input[type=text], input[type=number], input[type=password], input[type=url] {
-      width:100%; padding:9px 10px; border-radius:8px; border:1px solid var(--line); background:#0b1220; color:var(--txt); font-size:14px;
+    :root {
+      --bg0:#0b1120; --bg1:#0f172a; --card:rgba(30,41,59,.65); --card-solid:#1e293b;
+      --line:rgba(148,163,184,.18); --txt:#e8edf6; --muted:#94a3b8; --muted2:#64748b;
+      --accent:#3b82f6; --accent2:#6366f1; --accent3:#06b6d4;
+      --ok:#22c55e; --warn:#f59e0b; --err:#ef4444; --info:#38bdf8; --purple:#a78bfa;
+      --field:#0b1220;
     }
-    .row { display:flex; gap:10px; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin:0; font-family:"Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+      color:var(--txt); min-height:100vh;
+      background:
+        radial-gradient(1100px 600px at 85% -10%, rgba(59,130,246,.18), transparent 60%),
+        radial-gradient(900px 500px at -10% 110%, rgba(99,102,241,.16), transparent 55%),
+        linear-gradient(160deg, var(--bg0), var(--bg1));
+      background-attachment: fixed;
+    }
+
+    /* Header */
+    header {
+      padding:22px 32px; display:flex; align-items:center; justify-content:space-between;
+      border-bottom:1px solid var(--line);
+      background:linear-gradient(90deg, rgba(15,23,42,.9), rgba(15,23,42,.55));
+      backdrop-filter: blur(8px); position:sticky; top:0; z-index:5;
+    }
+    .brand { display:flex; align-items:center; gap:14px; }
+    .logo {
+      width:44px; height:44px; border-radius:12px; display:grid; place-items:center;
+      font-size:22px; background:linear-gradient(135deg, var(--accent), var(--accent2));
+      box-shadow:0 8px 24px rgba(59,130,246,.35);
+    }
+    .brand h1 { margin:0; font-size:20px; letter-spacing:.2px; font-weight:700; }
+    .brand p { margin:2px 0 0; color:var(--muted); font-size:12.5px; }
+    .badge-live {
+      display:flex; align-items:center; gap:7px; font-size:12.5px; color:#a7f3d0;
+      background:rgba(34,197,94,.12); border:1px solid rgba(34,197,94,.3);
+      padding:6px 12px; border-radius:999px;
+    }
+    .dot { width:8px; height:8px; border-radius:50%; background:#22c55e; box-shadow:0 0 0 0 rgba(34,197,94,.6); animation:pulse 2s infinite; }
+    @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(34,197,94,.5);} 70%{box-shadow:0 0 0 7px rgba(34,197,94,0);} 100%{box-shadow:0 0 0 0 rgba(34,197,94,0);} }
+
+    .wrap { display:grid; grid-template-columns: 400px 1fr; gap:22px; padding:26px 32px; align-items:start; max-width:1400px; margin:0 auto; }
+    @media (max-width: 920px){ .wrap{ grid-template-columns:1fr; } }
+
+    .card {
+      background:var(--card); border:1px solid var(--line); border-radius:18px; padding:22px;
+      backdrop-filter: blur(12px); box-shadow:0 20px 50px rgba(0,0,0,.35);
+    }
+    .card-title { display:flex; align-items:center; gap:9px; font-size:15px; font-weight:600; margin:0 0 16px; color:#dbe4f0; }
+    .card-title .ic { font-size:17px; }
+
+    label { display:block; font-size:12.5px; color:var(--muted); margin:14px 0 6px; font-weight:500; }
+    label:first-of-type { margin-top:0; }
+    input[type=text], input[type=number], input[type=password], input[type=url], select {
+      width:100%; padding:11px 13px; border-radius:11px; border:1px solid var(--line);
+      background:var(--field); color:var(--txt); font-size:14px; transition:border-color .15s, box-shadow .15s;
+      outline:none;
+    }
+    input:focus, select:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(59,130,246,.18); }
+    select { cursor:pointer; appearance:none;
+      background-image:linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+      background-position:calc(100% - 18px) 18px, calc(100% - 13px) 18px; background-size:5px 5px, 5px 5px; background-repeat:no-repeat;
+    }
+    .row { display:flex; gap:12px; }
     .row > div { flex:1; }
-    .check { display:flex; align-items:center; gap:8px; margin-top:10px; font-size:14px; color:var(--txt); }
-    button { margin-top:16px; width:100%; padding:11px; border:0; border-radius:9px; background:var(--accent); color:#fff; font-size:15px; font-weight:600; cursor:pointer; }
-    button:disabled { opacity:.6; cursor:not-allowed; }
-    fieldset { border:1px solid var(--line); border-radius:9px; margin-top:14px; padding:8px 12px 12px; }
-    legend { color:var(--muted); font-size:12px; padding:0 6px; }
-    .log { background:#0b1220; border:1px solid var(--line); border-radius:9px; padding:12px; height:300px; overflow:auto; font-family: ui-monospace, Consolas, monospace; font-size:12.5px; white-space:pre-wrap; }
-    .cards { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
-    .stat { background:#0b1220; border:1px solid var(--line); border-radius:9px; padding:10px 14px; min-width:110px; }
-    .stat b { display:block; font-size:22px; }
-    .stat span { color:var(--muted); font-size:12px; }
-    a.btnlink { display:inline-block; margin-top:12px; margin-right:10px; padding:9px 14px; background:#0b1220; border:1px solid var(--line); border-radius:8px; color:var(--txt); text-decoration:none; font-size:14px; }
-    a.btnlink:hover { border-color: var(--accent); }
-    .muted { color: var(--muted); font-size: 13px; }
+
+    .check { display:flex; align-items:center; gap:9px; margin-top:12px; font-size:13.5px; color:#cbd5e1; cursor:pointer; }
+    .check input { width:16px; height:16px; accent-color:var(--accent); cursor:pointer; }
+    .check label { margin:0; color:#cbd5e1; cursor:pointer; }
+
+    fieldset { border:1px solid var(--line); border-radius:13px; margin-top:18px; padding:10px 14px 15px; background:rgba(11,18,32,.4); }
+    legend { color:var(--muted); font-size:11.5px; padding:0 8px; font-weight:500; }
+
+    .btn-primary {
+      margin-top:20px; width:100%; padding:13px; border:0; border-radius:12px; cursor:pointer;
+      background:linear-gradient(135deg, var(--accent), var(--accent2));
+      color:#fff; font-size:15px; font-weight:600; letter-spacing:.3px;
+      box-shadow:0 10px 26px rgba(59,130,246,.4); transition:transform .12s, box-shadow .12s, opacity .12s;
+      display:flex; align-items:center; justify-content:center; gap:9px;
+    }
+    .btn-primary:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 14px 32px rgba(59,130,246,.5); }
+    .btn-primary:active:not(:disabled) { transform:translateY(0); }
+    .btn-primary:disabled { opacity:.65; cursor:not-allowed; }
+    .spinner { width:16px; height:16px; border:2px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* Stat cards */
+    .cards { display:grid; grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); gap:12px; margin-bottom:18px; }
+    .stat {
+      position:relative; background:linear-gradient(160deg, rgba(15,23,42,.9), rgba(30,41,59,.6));
+      border:1px solid var(--line); border-radius:14px; padding:14px 16px; overflow:hidden;
+    }
+    .stat::before { content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--sc, var(--accent)); }
+    .stat b { display:block; font-size:26px; font-weight:700; line-height:1.1; color:var(--sc, #e5e7eb); }
+    .stat span { color:var(--muted); font-size:11.5px; display:block; margin-top:3px; }
+
+    .report-links { display:flex; gap:12px; flex-wrap:wrap; margin:4px 0 10px; }
+    a.btnlink {
+      display:inline-flex; align-items:center; gap:8px; padding:10px 16px;
+      background:rgba(11,18,32,.7); border:1px solid var(--line); border-radius:11px;
+      color:var(--txt); text-decoration:none; font-size:13.5px; font-weight:500; transition:all .15s;
+    }
+    a.btnlink:hover { border-color:var(--accent); background:rgba(59,130,246,.12); transform:translateY(-1px); }
+
+    .log-head { display:flex; align-items:center; justify-content:space-between; margin:4px 0 10px; }
+    .log-head .lbl { display:flex; align-items:center; gap:8px; font-size:14px; font-weight:600; color:#dbe4f0; }
+    .log {
+      background:#070c17; border:1px solid var(--line); border-radius:13px; padding:14px 16px;
+      height:420px; overflow:auto; font-family:ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size:12.5px; line-height:1.65; white-space:pre-wrap; word-break:break-all;
+    }
+    .log::-webkit-scrollbar { width:9px; } .log::-webkit-scrollbar-thumb { background:#1e293b; border-radius:9px; }
+    .muted { color: var(--muted); }
     .hidden { display:none; }
+    .auth-line { color:var(--muted); font-size:13px; margin-top:6px; }
+    .hint { color:var(--muted2); font-size:11.5px; margin-top:6px; }
   </style>
 </head>
 <body>
   <header>
-    <h1>🔎 QA Crawler</h1>
-    <p>Enter a website URL, choose options, and click Start. It crawls the site, tests every page, and produces a QA report.</p>
+    <div class="brand">
+      <div class="logo">🔍</div>
+      <div>
+        <h1>QA Crawler</h1>
+        <p>Automated website QA — crawl, test every page &amp; link, get a full report</p>
+      </div>
+    </div>
+    <div class="badge-live"><span class="dot"></span> Ready</div>
   </header>
 
   <div class="wrap">
     <!-- Left: form -->
     <div class="card">
+      <h3 class="card-title"><span class="ic">⚙️</span> Scan configuration</h3>
+
       <label for="baseUrl">Website URL</label>
       <input id="baseUrl" type="url" placeholder="https://example.com" />
 
       <label for="scanMode">Scan mode</label>
-      <select id="scanMode" style="width:100%; padding:9px 10px; border-radius:8px; border:1px solid var(--line); background:#0b1220; color:var(--txt); font-size:14px;">
+      <select id="scanMode">
         <option value="full">Full site — crawl all pages</option>
         <option value="homeAllLinks">Home page only — check ALL links (header + footer + body)</option>
       </select>
 
-      <div class="row">
+      <div class="row" style="margin-top:14px;">
         <div>
           <label for="maxPages">Max pages</label>
           <input id="maxPages" type="number" value="50" min="1" />
@@ -69,13 +165,13 @@
         </div>
       </div>
 
-      <div class="check"><input id="includeSubdomains" type="checkbox" /> <label for="includeSubdomains" style="margin:0">Include subdomains</label></div>
-      <div class="check"><input id="checkExternalLinks" type="checkbox" checked /> <label for="checkExternalLinks" style="margin:0">Check external links</label></div>
-      <div class="check"><input id="useSitemap" type="checkbox" checked /> <label for="useSitemap" style="margin:0">Use sitemap.xml (find orphan/unlinked pages)</label></div>
+      <div class="check"><input id="includeSubdomains" type="checkbox" /> <label for="includeSubdomains">Include subdomains</label></div>
+      <div class="check"><input id="checkExternalLinks" type="checkbox" checked /> <label for="checkExternalLinks">Check external links</label></div>
+      <div class="check"><input id="useSitemap" type="checkbox" checked /> <label for="useSitemap">Use sitemap.xml (find orphan/unlinked pages)</label></div>
 
       <fieldset>
-        <legend>Login (for post-login pages) — optional</legend>
-        <div class="check"><input id="loginEnabled" type="checkbox" /> <label for="loginEnabled" style="margin:0">Enable login</label></div>
+        <legend>🔐 Login (for post-login pages) — optional</legend>
+        <div class="check"><input id="loginEnabled" type="checkbox" /> <label for="loginEnabled">Enable login</label></div>
         <div id="loginFields" class="hidden">
           <label for="loginUrl">Login page URL</label>
           <input id="loginUrl" type="url" placeholder="https://example.com/login" />
@@ -112,18 +208,24 @@
         </div>
       </fieldset>
 
-      <button id="startBtn">Start Crawl</button>
+      <button id="startBtn" class="btn-primary"><span class="ic">🚀</span> Start Crawl</button>
+      <div class="hint">Tip: use "Home page only" for a quick smoke test of header/footer/body links.</div>
     </div>
 
     <!-- Right: results -->
     <div class="card">
+      <h3 class="card-title"><span class="ic">📊</span> Results</h3>
+
       <div id="summary" class="hidden">
         <div class="cards" id="statCards"></div>
-        <div id="reportLinks"></div>
-        <div id="authLine" class="muted"></div>
+        <div class="report-links" id="reportLinks"></div>
+        <div id="authLine" class="auth-line"></div>
       </div>
-      <label style="margin-top:0">Live progress</label>
-      <div id="log" class="log muted">Idle. Fill the form and click "Start Crawl".</div>
+
+      <div class="log-head">
+        <span class="lbl"><span>📡</span> Live progress</span>
+      </div>
+      <div id="log" class="log muted">Idle — fill the form and click "Start Crawl" to begin.</div>
     </div>
   </div>
 
