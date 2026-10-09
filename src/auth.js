@@ -38,6 +38,10 @@ const SUBMIT_CANDIDATES = [
   'button[class*=signin i]',
 ];
 
+// Regex for text on a button/link that OPENS the login popup (the trigger you
+// click first). e.g. "Sign In", "Login", "Log in", "Sign Up".
+const OPEN_LOGIN_TEXT = /\b(sign\s?in|log\s?in|login|signin|sign\s?up|account)\b/i;
+
 // Find the first selector in a list that exists and is visible on the page.
 async function firstVisible(page, selectors) {
   for (const sel of selectors) {
@@ -70,6 +74,68 @@ async function findSubmit(page) {
   return null;
 }
 
+// Is a visible password field present on the page right now?
+async function hasVisiblePassword(page) {
+  return page
+    .locator('input[type=password]')
+    .first()
+    .isVisible({ timeout: 800 })
+    .catch(() => false);
+}
+
+// Click a "Sign In" / "Login" trigger to open the login popup/modal.
+// Returns true if a trigger was clicked.
+async function openLoginPopup(page, lc, log) {
+  // 1. Use an explicit trigger selector if the user provided one.
+  if (lc.openSelector) {
+    try {
+      const el = page.locator(lc.openSelector).first();
+      if (await el.isVisible({ timeout: 1500 }).catch(() => false)) {
+        log(`[auth] clicking configured login trigger: ${lc.openSelector}`);
+        await el.click();
+        return true;
+      }
+    } catch { /* fall through */ }
+  }
+
+  // 2. Auto-find a button/link whose text looks like "Sign In" / "Login".
+  const trigger = page
+    .locator('button, a, [role=button]')
+    .filter({ hasText: OPEN_LOGIN_TEXT })
+    .first();
+  if (await trigger.isVisible({ timeout: 1500 }).catch(() => false)) {
+    const label = (await trigger.textContent().catch(() => ''))?.trim().slice(0, 30);
+    log(`[auth] clicking login trigger ("${label}") to open popup`);
+    await trigger.click();
+    return true;
+  }
+  return false;
+}
+
+// Tick any consent / terms / "remember me" checkboxes that are required to log in.
+async function checkConsentBoxes(page, log) {
+  try {
+    const boxes = page.locator('input[type=checkbox]:visible');
+    const count = await boxes.count().catch(() => 0);
+    let checked = 0;
+    for (let i = 0; i < count; i++) {
+      const box = boxes.nth(i);
+      const isChecked = await box.isChecked().catch(() => true);
+      if (!isChecked) {
+        // check() ticks it; if the real input is hidden behind a styled label,
+        // fall back to clicking it.
+        await box.check({ timeout: 1500 }).catch(async () => {
+          await box.click({ force: true, timeout: 1500 }).catch(() => {});
+        });
+        checked++;
+      }
+    }
+    if (checked > 0) log(`[auth] checked ${checked} consent/checkbox field(s)`);
+  } catch {
+    /* ignore */
+  }
+}
+
 /**
  * Perform a form login in the given browser context.
  * Returns { ok, message, landingUrl }.
@@ -83,10 +149,13 @@ export async function login(context, cfg, log) {
   const { login: lc } = cfg;
   if (!lc || !lc.enabled) return { ok: false, message: 'login disabled', landingUrl: null };
 
-  if (!lc.loginUrl || !lc.username || !lc.password) {
+  // loginUrl is optional: if the login is a popup on the site itself, fall back
+  // to the site's base URL (the user clicks "Sign In" there).
+  const entryUrl = lc.loginUrl || cfg.baseUrl;
+  if (!entryUrl || !lc.username || !lc.password) {
     return {
       ok: false,
-      message: 'login config incomplete (loginUrl/username/password required)',
+      message: 'login config incomplete (username/password required; and a URL to start from)',
       landingUrl: null,
     };
   }
@@ -95,9 +164,24 @@ export async function login(context, cfg, log) {
 
   const page = await context.newPage();
   try {
-    log(`[auth] navigating to login page: ${lc.loginUrl}`);
-    await page.goto(lc.loginUrl, { waitUntil: 'domcontentloaded', timeout: cfg.navTimeoutMs });
+    log(`[auth] navigating to: ${entryUrl}`);
+    await page.goto(entryUrl, { waitUntil: 'domcontentloaded', timeout: cfg.navTimeoutMs });
     await page.waitForLoadState('networkidle', { timeout: cfg.navTimeoutMs }).catch(() => {});
+
+    // If no password field is visible yet, the login is likely behind a
+    // "Sign In" button that opens a popup/modal. Click it to reveal the form.
+    if (!(await hasVisiblePassword(page))) {
+      const opened = await openLoginPopup(page, lc, log);
+      if (opened) {
+        // Wait for the popup/modal with a password field to appear.
+        await page
+          .locator('input[type=password]')
+          .first()
+          .waitFor({ state: 'visible', timeout: 8000 })
+          .catch(() => {});
+        await page.waitForTimeout(500);
+      }
+    }
 
     // Resolve selectors (use provided ones, else auto-detect).
     let userSel = lc.usernameSelector;
@@ -112,7 +196,7 @@ export async function login(context, cfg, log) {
     if (!userSel || !passSel) {
       return {
         ok: false,
-        message: `login failed: could not locate ${!userSel ? 'username' : ''}${!userSel && !passSel ? ' and ' : ''}${!passSel ? 'password' : ''} field (try specifying selectors manually)`,
+        message: `login failed: could not locate ${!userSel ? 'username/email' : ''}${!userSel && !passSel ? ' and ' : ''}${!passSel ? 'password' : ''} field. If login opens in a popup, make sure the "Sign In" trigger is clickable, or set selectors in Advanced.`,
         landingUrl: null,
       };
     }
@@ -120,6 +204,9 @@ export async function login(context, cfg, log) {
     log(`[auth] filling username (${userSel}) and password (${passSel})`);
     await page.fill(userSel, lc.username);
     await page.fill(passSel, lc.password);
+
+    // Tick any consent / terms / remember-me checkboxes (required by some forms).
+    await checkConsentBoxes(page, log);
 
     // Resolve submit.
     let submitHandled = false;
@@ -176,7 +263,7 @@ export async function login(context, cfg, log) {
       .first()
       .isVisible({ timeout: 500 })
       .catch(() => false);
-    const urlChanged = currentUrl.replace(/\/$/, '') !== lc.loginUrl.replace(/\/$/, '');
+    const urlChanged = currentUrl.replace(/\/$/, '') !== entryUrl.replace(/\/$/, '');
     const ok = !stillHasPassword || urlChanged;
 
     return {

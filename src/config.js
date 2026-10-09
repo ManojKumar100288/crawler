@@ -50,6 +50,7 @@ const DEFAULTS = {
     usernameSelector: null,
     passwordSelector: null,
     submitSelector: null,
+    openSelector: null,
     autoDetect: true,
     username: null,
     password: null,

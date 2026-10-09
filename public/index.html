@@ -185,8 +185,9 @@
         <legend>🔐 Login (for post-login pages) — optional</legend>
         <div class="check"><input id="loginEnabled" type="checkbox" /> <label for="loginEnabled">Enable login</label></div>
         <div id="loginFields" class="hidden">
-          <label for="loginUrl">Login page URL</label>
-          <input id="loginUrl" type="url" placeholder="https://example.com/login" />
+          <label for="loginUrl">Login / start page URL <span style="color:var(--muted2)">(optional — leave blank to use the Website URL)</span></label>
+          <input id="loginUrl" type="url" placeholder="blank = use Website URL above" />
+          <div class="hint">If login opens in a popup when you click "Sign In", just leave this blank — the tool clicks Sign In, fills email/password, ticks the consent box, and logs in automatically.</div>
           <div class="row">
             <div>
               <label for="username">Username / Email</label>
@@ -221,6 +222,12 @@
               <div>
                 <label for="successUrlIncludes">Success URL contains</label>
                 <input id="successUrlIncludes" type="text" placeholder="/dashboard" />
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <label for="openSelector">"Sign In" button selector <span style="color:var(--muted2)">(opens popup)</span></label>
+                <input id="openSelector" type="text" placeholder="auto-detect" />
               </div>
             </div>
           </details>

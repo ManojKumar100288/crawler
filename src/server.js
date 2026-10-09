@@ -116,10 +116,11 @@ function buildConfigFromForm(form) {
     // Empty selectors -> null so the generic auto-detection kicks in.
     cliOverrides.login = {
       enabled: true,
-      loginUrl: form.login.loginUrl,
+      loginUrl: form.login.loginUrl ? form.login.loginUrl.trim() : null, // null => use baseUrl
       usernameSelector: form.login.usernameSelector ? form.login.usernameSelector.trim() : null,
       passwordSelector: form.login.passwordSelector ? form.login.passwordSelector.trim() : null,
       submitSelector: form.login.submitSelector ? form.login.submitSelector.trim() : null,
+      openSelector: form.login.openSelector ? form.login.openSelector.trim() : null,
       autoDetect: !(form.login.usernameSelector && form.login.passwordSelector),
       username: form.login.username,
       password: form.login.password,

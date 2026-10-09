@@ -51,13 +51,14 @@ function collectForm() {
   if ($('loginEnabled').checked) {
     form.login = {
       enabled: true,
-      loginUrl: $('loginUrl').value.trim(),
+      loginUrl: $('loginUrl').value.trim(), // blank = use baseUrl (popup login)
       username: $('username').value,
       password: $('password').value,
       // Selectors are optional — blank means auto-detect.
       usernameSelector: $('usernameSelector').value.trim(),
       passwordSelector: $('passwordSelector').value.trim(),
       submitSelector: $('submitSelector').value.trim(),
+      openSelector: $('openSelector').value.trim(),
       successUrlIncludes: $('successUrlIncludes').value.trim(),
     };
     form.postLoginStart = $('postLoginStart').checked;
