@@ -83,30 +83,102 @@ async function hasVisiblePassword(page) {
     .catch(() => false);
 }
 
+// Close/dismiss any blocking overlay or modal popup (ad, podcast promo, cookie
+// banner, etc.) that may intercept clicks on the real "Sign In" button.
+async function dismissOverlays(page, log) {
+  const closeSelectors = [
+    '.modal.show button.close',
+    '.modal.show [data-dismiss=modal]',
+    '.modal.show [data-bs-dismiss=modal]',
+    '[class*=modal][class*=show] button[aria-label=Close i]',
+    'button[aria-label=Close i]',
+    'button.close',
+    '.close-button',
+    '[class*=popup] [class*=close]',
+    '[class*=modal] [class*=close]',
+  ];
+  let closed = 0;
+  for (const sel of closeSelectors) {
+    try {
+      const els = page.locator(sel);
+      const n = await els.count().catch(() => 0);
+      for (let i = 0; i < n; i++) {
+        const el = els.nth(i);
+        if (await el.isVisible({ timeout: 300 }).catch(() => false)) {
+          await el.click({ force: true, timeout: 1500 }).catch(() => {});
+          closed++;
+        }
+      }
+    } catch { /* ignore */ }
+  }
+  // As a last resort, press Escape to dismiss modals.
+  await page.keyboard.press('Escape').catch(() => {});
+  if (closed > 0) log(`[auth] dismissed ${closed} overlay/popup element(s) blocking the page`);
+}
+
+// Does this element look like a real login trigger (not a dropdown toggle)?
+async function isLikelyLoginTrigger(el) {
+  try {
+    const txt = ((await el.textContent().catch(() => '')) || '').trim().toLowerCase();
+    // Exact-ish login words are good; dropdown toggles usually have other text.
+    if (!/\b(sign\s?in|log\s?in|login|signin)\b/.test(txt)) return false;
+    // Avoid Bootstrap dropdown toggles.
+    const cls = ((await el.getAttribute('class').catch(() => '')) || '').toLowerCase();
+    const dataToggle = (await el.getAttribute('data-toggle').catch(() => '')) || (await el.getAttribute('data-bs-toggle').catch(() => '')) || '';
+    if (/dropdown/.test(cls) || /dropdown/.test(dataToggle)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Click a "Sign In" / "Login" trigger to open the login popup/modal.
 // Returns true if a trigger was clicked.
 async function openLoginPopup(page, lc, log) {
+  // First, clear any overlay/modal that could intercept the click.
+  await dismissOverlays(page, log);
+
   // 1. Use an explicit trigger selector if the user provided one.
   if (lc.openSelector) {
     try {
       const el = page.locator(lc.openSelector).first();
       if (await el.isVisible({ timeout: 1500 }).catch(() => false)) {
         log(`[auth] clicking configured login trigger: ${lc.openSelector}`);
-        await el.click();
+        await el.click({ timeout: 5000 }).catch(async () => {
+          await el.click({ force: true, timeout: 3000 });
+        });
         return true;
       }
     } catch { /* fall through */ }
   }
 
-  // 2. Auto-find a button/link whose text looks like "Sign In" / "Login".
-  const trigger = page
+  // 2. Auto-find candidate triggers and pick the one that really looks like login.
+  const candidates = page
     .locator('button, a, [role=button]')
-    .filter({ hasText: OPEN_LOGIN_TEXT })
-    .first();
-  if (await trigger.isVisible({ timeout: 1500 }).catch(() => false)) {
-    const label = (await trigger.textContent().catch(() => ''))?.trim().slice(0, 30);
+    .filter({ hasText: OPEN_LOGIN_TEXT });
+  const count = await candidates.count().catch(() => 0);
+
+  for (let i = 0; i < count; i++) {
+    const el = candidates.nth(i);
+    if (!(await el.isVisible({ timeout: 300 }).catch(() => false))) continue;
+    if (!(await isLikelyLoginTrigger(el))) continue;
+
+    const label = ((await el.textContent().catch(() => '')) || '').trim().slice(0, 30);
     log(`[auth] clicking login trigger ("${label}") to open popup`);
-    await trigger.click();
+    // Normal click first; if an overlay still blocks it, dismiss + force-click.
+    const clicked = await el.click({ timeout: 5000 }).then(() => true).catch(() => false);
+    if (!clicked) {
+      await dismissOverlays(page, log);
+      await el.click({ force: true, timeout: 3000 }).catch(() => {});
+    }
+    return true;
+  }
+
+  // 3. Last resort: click the first visible login-ish element with force.
+  const fallback = candidates.first();
+  if (await fallback.isVisible({ timeout: 500 }).catch(() => false)) {
+    log('[auth] clicking first login-ish element (forced)');
+    await fallback.click({ force: true, timeout: 3000 }).catch(() => {});
     return true;
   }
   return false;
