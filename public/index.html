@@ -189,7 +189,7 @@
           <input id="loginUrl" type="url" placeholder="https://example.com/login" />
           <div class="row">
             <div>
-              <label for="username">Username</label>
+              <label for="username">Username / Email</label>
               <input id="username" type="text" />
             </div>
             <div>
@@ -197,26 +197,33 @@
               <input id="password" type="password" />
             </div>
           </div>
-          <div class="row">
-            <div>
-              <label for="usernameSelector">Username selector</label>
-              <input id="usernameSelector" type="text" value="#username" />
+
+          <div class="check" style="margin-top:14px;"><input id="postLoginStart" type="checkbox" checked /> <label for="postLoginStart">Only check pages <b>after login</b> (start from the dashboard, crawl the whole authenticated area)</label></div>
+          <div class="hint">Login fields are auto-detected, so this works on most sites. If auto-detect fails, open "Advanced" below and set the selectors manually.</div>
+
+          <details style="margin-top:12px;">
+            <summary style="cursor:pointer;color:var(--muted);font-size:12.5px;">Advanced — manual selectors (optional)</summary>
+            <div class="row" style="margin-top:10px;">
+              <div>
+                <label for="usernameSelector">Username selector</label>
+                <input id="usernameSelector" type="text" placeholder="auto-detect" />
+              </div>
+              <div>
+                <label for="passwordSelector">Password selector</label>
+                <input id="passwordSelector" type="text" placeholder="auto-detect" />
+              </div>
             </div>
-            <div>
-              <label for="passwordSelector">Password selector</label>
-              <input id="passwordSelector" type="text" value="#password" />
+            <div class="row">
+              <div>
+                <label for="submitSelector">Submit selector</label>
+                <input id="submitSelector" type="text" placeholder="auto-detect" />
+              </div>
+              <div>
+                <label for="successUrlIncludes">Success URL contains</label>
+                <input id="successUrlIncludes" type="text" placeholder="/dashboard" />
+              </div>
             </div>
-          </div>
-          <div class="row">
-            <div>
-              <label for="submitSelector">Submit selector</label>
-              <input id="submitSelector" type="text" value="button[type=submit]" />
-            </div>
-            <div>
-              <label for="successUrlIncludes">Success URL contains</label>
-              <input id="successUrlIncludes" type="text" placeholder="/dashboard" />
-            </div>
-          </div>
+          </details>
         </div>
       </fieldset>
 

@@ -53,6 +53,8 @@ function parseArgs(argv) {
     } else if (a === '--password') {
       out.cliOverrides.login = out.cliOverrides.login || {};
       out.cliOverrides.login.password = args[++i];
+    } else if (a === '--post-login') {
+      out.cliOverrides.postLoginStart = true;
     } else if (a.startsWith('--')) {
       console.warn(`Unknown flag ignored: ${a}`);
     } else {
@@ -87,8 +89,10 @@ Options:
       --out <dir>           Output directory for reports (default ./reports)
       --login               Enable login flow (needs login-url/username/password)
       --login-url <url>     Login page URL
-      --username <user>     Login username
+      --username <user>     Login username (login fields auto-detected)
       --password <pass>     Login password
+      --post-login          Start crawl from the post-login page (check only the
+                            authenticated area)
   -h, --help                Show this help
 
 Examples:

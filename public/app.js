@@ -54,11 +54,13 @@ function collectForm() {
       loginUrl: $('loginUrl').value.trim(),
       username: $('username').value,
       password: $('password').value,
+      // Selectors are optional — blank means auto-detect.
       usernameSelector: $('usernameSelector').value.trim(),
       passwordSelector: $('passwordSelector').value.trim(),
       submitSelector: $('submitSelector').value.trim(),
       successUrlIncludes: $('successUrlIncludes').value.trim(),
     };
+    form.postLoginStart = $('postLoginStart').checked;
   }
   return form;
 }

@@ -96,6 +96,7 @@ function buildConfigFromForm(form) {
     useSitemap: form.useSitemap !== false,
     fullSite: !!form.fullSite,
     scanMode: form.scanMode === 'homeAllLinks' ? 'homeAllLinks' : 'full',
+    postLoginStart: !!form.postLoginStart,
     ai: (() => {
       // API key can come from the form OR from the OPENAI_API_KEY env var on the host.
       const key = (form.ai && form.ai.apiKey) || process.env.OPENAI_API_KEY || null;
@@ -112,16 +113,18 @@ function buildConfigFromForm(form) {
     headless: true,
   };
   if (form.login && form.login.enabled) {
+    // Empty selectors -> null so the generic auto-detection kicks in.
     cliOverrides.login = {
       enabled: true,
       loginUrl: form.login.loginUrl,
-      usernameSelector: form.login.usernameSelector || '#username',
-      passwordSelector: form.login.passwordSelector || '#password',
-      submitSelector: form.login.submitSelector || 'button[type=submit]',
+      usernameSelector: form.login.usernameSelector ? form.login.usernameSelector.trim() : null,
+      passwordSelector: form.login.passwordSelector ? form.login.passwordSelector.trim() : null,
+      submitSelector: form.login.submitSelector ? form.login.submitSelector.trim() : null,
+      autoDetect: !(form.login.usernameSelector && form.login.passwordSelector),
       username: form.login.username,
       password: form.login.password,
       successUrlIncludes: form.login.successUrlIncludes || null,
-      waitAfterLoginMs: form.login.waitAfterLoginMs ? Number(form.login.waitAfterLoginMs) : 2000,
+      waitAfterLoginMs: form.login.waitAfterLoginMs ? Number(form.login.waitAfterLoginMs) : 2500,
     };
   }
   return loadConfig({ cliOverrides });

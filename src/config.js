@@ -32,6 +32,9 @@ const DEFAULTS = {
   // scanMode: 'full' (crawl whole site) | 'headerFooterHome' (only home page +
   // its header/footer links).
   scanMode: 'full',
+  // When true (and login succeeds), start the crawl from the post-login landing
+  // page instead of the base URL — so it checks the authenticated area.
+  postLoginStart: false,
   // AI-powered report summary (optional). Disabled unless an API key is set.
   ai: {
     enabled: false,
@@ -42,13 +45,16 @@ const DEFAULTS = {
   login: {
     enabled: false,
     loginUrl: null,
-    usernameSelector: '#username',
-    passwordSelector: '#password',
-    submitSelector: 'button[type=submit]',
+    // Selectors are optional. If left null, the fields are auto-detected,
+    // which makes login work generically across most websites.
+    usernameSelector: null,
+    passwordSelector: null,
+    submitSelector: null,
+    autoDetect: true,
     username: null,
     password: null,
     successUrlIncludes: null,
-    waitAfterLoginMs: 2000,
+    waitAfterLoginMs: 2500,
   },
   outputDir: './reports',
 };

@@ -37,6 +37,10 @@ export function isInScope(url, cfg) {
   } catch {
     return false;
   }
+  // Extra origins (e.g. a post-login dashboard on a different host) are always in scope.
+  if (cfg.extraOrigins && cfg.extraOrigins.includes(u.origin)) {
+    return true;
+  }
   if (cfg.sameOriginOnly && !cfg.includeSubdomains) {
     return u.origin === cfg.origin;
   }

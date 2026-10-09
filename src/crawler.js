@@ -30,11 +30,14 @@ export async function crawl(cfg, log = console.log) {
   };
 
   // 1. Optional login.
+  let loginLandingUrl = null;
   if (cfg.login?.enabled) {
     report.auth.attempted = true;
     const res = await login(context, cfg, log);
     report.auth.ok = res.ok;
     report.auth.message = res.message;
+    loginLandingUrl = res.landingUrl || null;
+    report.auth.landingUrl = loginLandingUrl;
     log(`[auth] ${res.message}`);
     if (!res.ok) {
       log('[auth] WARNING: continuing without authenticated session; post-login pages may be inaccessible.');
@@ -56,15 +59,35 @@ export async function crawl(cfg, log = console.log) {
   }
 
   // 2. BFS crawl.
-  const start = normalizeUrl(cfg.baseUrl, cfg.baseUrl);
+  // When post-login crawling is requested and login succeeded, start from the
+  // page we landed on after login (e.g. the dashboard) so the crawl focuses on
+  // the authenticated area. Otherwise start from the base URL.
+  let startRaw = cfg.baseUrl;
+  if (cfg.postLoginStart && loginLandingUrl) {
+    startRaw = loginLandingUrl;
+    log(`[crawl] starting from post-login landing page: ${loginLandingUrl}`);
+    // Expand scope to include the landing page's origin, so dashboards hosted
+    // on a different subdomain/host are still crawled.
+    try {
+      const lu = new URL(loginLandingUrl);
+      if (lu.origin !== cfg.origin) {
+        cfg.extraOrigins = cfg.extraOrigins || [];
+        cfg.extraOrigins.push(lu.origin);
+        log(`[crawl] added ${lu.origin} to crawl scope (post-login host)`);
+      }
+    } catch { /* ignore */ }
+  }
+
+  const start = normalizeUrl(startRaw, startRaw);
   const queue = [{ url: start, depth: 0 }];
   const enqueued = new Set([start]);
   const visited = new Set();
   const externalToCheck = new Set();
 
   // 2a. Seed from sitemap(s) so orphan / unlinked pages are also covered.
+  // Skip sitemap when crawling the post-login area (sitemap pages are public).
   report.sitemap = { used: false, sitemapsChecked: [], urlsFound: 0, urlsSeeded: 0 };
-  if (cfg.useSitemap) {
+  if (cfg.useSitemap && !(cfg.postLoginStart && loginLandingUrl)) {
     log('[sitemap] discovering sitemap URLs…');
     try {
       const { urls, sitemapsChecked } = await collectSitemapUrls(context, cfg, log);
