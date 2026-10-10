@@ -7,10 +7,8 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     plan: free
-    # Render sets $PORT automatically; the server reads it.
+    # Render sets $PORT automatically; the server reads it. Do NOT hardcode PORT.
     envVars:
-      - key: PORT
-        value: 10000
       # Basic Auth gate so only people with the password can use the public app.
       # Set these privately in the Render dashboard (Environment tab) — they are
       # NOT stored in this public repo for security. Suggested: manojkumar / your password.
