@@ -1,0 +1,18 @@
+# Render.com deployment config (Infrastructure as Code).
+# With this file in the repo, Render can deploy the app automatically.
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: qa-crawler
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    # Render sets $PORT automatically; the server reads it.
+    envVars:
+      - key: PORT
+        value: 10000
+      # Optional: set an OpenAI key here to enable AI summaries for everyone.
+      # - key: OPENAI_API_KEY
+      #   sync: false
+    healthCheckPath: /
+    autoDeploy: true

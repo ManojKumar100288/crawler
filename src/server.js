@@ -253,8 +253,12 @@ server.on('error', (err) => {
   process.exit(1);
 });
 
-server.listen(PORT, () => {
-  console.log(`\n🖥️  QA Crawler UI running at:  http://localhost:${PORT}\n`);
+// Bind to 0.0.0.0 so the server is reachable when hosted on a cloud platform
+// (Render, Railway, a VM, etc.), not just localhost.
+const HOST = process.env.HOST || '0.0.0.0';
+server.listen(PORT, HOST, () => {
+  console.log(`\n🖥️  QA Crawler UI running on ${HOST}:${PORT}`);
+  console.log(`   Local:  http://localhost:${PORT}\n`);
   console.log('   Open that URL in your browser, enter a website URL, and click "Start Crawl".');
   console.log('   Press Ctrl+C to stop the server.\n');
 });
