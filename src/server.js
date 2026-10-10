@@ -158,9 +158,43 @@ async function runCrawlJob(job, form) {
   }
 }
 
+// Optional HTTP Basic Auth gate for public hosting.
+// Activated only when AUTH_USER and AUTH_PASS environment variables are set.
+// Locally (no env vars) the app stays open, so nothing changes for you.
+const AUTH_USER = process.env.AUTH_USER || null;
+const AUTH_PASS = process.env.AUTH_PASS || null;
+const AUTH_ENABLED = !!(AUTH_USER && AUTH_PASS);
+
+function checkAuth(req) {
+  if (!AUTH_ENABLED) return true;
+  const header = req.headers['authorization'] || '';
+  const m = header.match(/^Basic\s+(.+)$/i);
+  if (!m) return false;
+  let decoded = '';
+  try {
+    decoded = Buffer.from(m[1], 'base64').toString('utf8');
+  } catch {
+    return false;
+  }
+  const idx = decoded.indexOf(':');
+  const user = decoded.slice(0, idx);
+  const pass = decoded.slice(idx + 1);
+  return user === AUTH_USER && pass === AUTH_PASS;
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const pathname = decodeURIComponent(url.pathname);
+
+  // Gate every request behind Basic Auth when enabled (public hosting).
+  if (!checkAuth(req)) {
+    res.writeHead(401, {
+      'WWW-Authenticate': 'Basic realm="QA Crawler", charset="UTF-8"',
+      'Content-Type': 'text/plain',
+    });
+    res.end('Authentication required.');
+    return;
+  }
 
   // Start a crawl.
   if (req.method === 'POST' && pathname === '/api/crawl') {

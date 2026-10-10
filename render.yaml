@@ -11,6 +11,13 @@ services:
     envVars:
       - key: PORT
         value: 10000
+      # Basic Auth gate so only people with the password can use the public app.
+      # Set these privately in the Render dashboard (Environment tab) — they are
+      # NOT stored in this public repo for security. Suggested: manojkumar / your password.
+      - key: AUTH_USER
+        sync: false
+      - key: AUTH_PASS
+        sync: false
       # Optional: set an OpenAI key here to enable AI summaries for everyone.
       # - key: OPENAI_API_KEY
       #   sync: false
