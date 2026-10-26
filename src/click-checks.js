@@ -45,54 +45,74 @@ export async function clickCheckPage(context, url, cfg, log = () => {}) {
   // (nav menus like "Quiz & Challenges ⌄" only show children after hover).
   await revealMenus(page).catch(() => {});
 
-  // Build a stable list of clickable descriptors we can re-find after each
-  // navigation (clicking may navigate away, so we re-locate by index each time).
-  const descriptors = await collectClickables(page, cfg);
-  result.clickable = descriptors.length;
-  log(`[click] ${url} -> ${descriptors.length} clickable element(s) to test`);
+  // Everything below is wrapped so a closed/navigated page can never crash the
+  // whole crawl — any failure just ends the click-check for this page cleanly.
+  try {
+    // Build a stable list of clickable descriptors we can re-find after each
+    // navigation (clicking may navigate away, so we re-locate by index each time).
+    const descriptors = await collectClickables(page, cfg);
+    result.clickable = descriptors.length;
+    log(`[click] ${url} -> ${descriptors.length} clickable element(s) to test`);
 
-  const startUrl = page.url();
+    const startUrl = page.url();
 
-  for (let i = 0; i < descriptors.length && i < (cfg.maxClicksPerPage || 60); i++) {
-    const d = descriptors[i];
-    const jsErrBefore = jsErrors.length;
+    for (let i = 0; i < descriptors.length && i < (cfg.maxClicksPerPage || 60); i++) {
+      // Stop if the page/context got closed for any reason.
+      if (page.isClosed()) break;
 
-    // Make sure we're back on the start page before each click.
-    if (page.url() !== startUrl) {
-      await page.goto(startUrl, { waitUntil: 'domcontentloaded', timeout: cfg.navTimeoutMs }).catch(() => {});
-      await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+      const d = descriptors[i];
+      const jsErrBefore = jsErrors.length;
+
+      // Make sure we're back on the start page before each click.
+      try {
+        if (page.url() !== startUrl) {
+          await page.goto(startUrl, { waitUntil: 'domcontentloaded', timeout: cfg.navTimeoutMs }).catch(() => {});
+          await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+        }
+      } catch {
+        break; // page gone — stop cleanly
+      }
+
+      let outcome;
+      try {
+        outcome = await clickOne(page, context, d, cfg);
+      } catch (err) {
+        // A single click blew up (often a navigation/closed page) — record and continue.
+        outcome = { selector: `${d.tag}#${d.index}`, text: d.text, href: d.href, status: 'click-failed', detail: String(err.message || err).split('\n')[0].slice(0, 120) };
+      }
+
+      // Attribute any JS error that fired during this click.
+      if (jsErrors.length > jsErrBefore) {
+        outcome.status = outcome.status === 'click-failed' ? outcome.status : 'js-error';
+        outcome.detail = (outcome.detail ? outcome.detail + '; ' : '') + jsErrors.slice(jsErrBefore).join(' | ');
+      }
+
+      result.results.push(outcome);
+
+      // Record issues for problematic outcomes.
+      if (outcome.status === 'js-error') {
+        result.issues.push({
+          severity: 'error',
+          type: 'click-js-error',
+          message: `Clicking "${outcome.text || outcome.selector}" caused a JavaScript error: ${outcome.detail}`,
+        });
+      } else if (outcome.status === 'click-failed') {
+        result.issues.push({
+          severity: 'warning',
+          type: 'click-failed',
+          message: `Could not click "${outcome.text || outcome.selector}": ${outcome.detail}`,
+        });
+      } else if (outcome.status === 'dead') {
+        result.issues.push({
+          severity: 'warning',
+          type: 'dead-click',
+          message: `Clicking "${outcome.text || outcome.selector}" did nothing (no navigation, no new tab, no visible change) — possible broken button/link`,
+        });
+      }
     }
-
-    const outcome = await clickOne(page, context, d, cfg);
-
-    // Attribute any JS error that fired during this click.
-    if (jsErrors.length > jsErrBefore) {
-      outcome.status = outcome.status === 'click-failed' ? outcome.status : 'js-error';
-      outcome.detail = (outcome.detail ? outcome.detail + '; ' : '') + jsErrors.slice(jsErrBefore).join(' | ');
-    }
-
-    result.results.push(outcome);
-
-    // Record issues for problematic outcomes.
-    if (outcome.status === 'js-error') {
-      result.issues.push({
-        severity: 'error',
-        type: 'click-js-error',
-        message: `Clicking "${outcome.text || outcome.selector}" caused a JavaScript error: ${outcome.detail}`,
-      });
-    } else if (outcome.status === 'click-failed') {
-      result.issues.push({
-        severity: 'warning',
-        type: 'click-failed',
-        message: `Could not click "${outcome.text || outcome.selector}": ${outcome.detail}`,
-      });
-    } else if (outcome.status === 'dead') {
-      result.issues.push({
-        severity: 'warning',
-        type: 'dead-click',
-        message: `Clicking "${outcome.text || outcome.selector}" did nothing (no navigation, no new tab, no visible change) — possible broken button/link`,
-      });
-    }
+  } catch (err) {
+    // Click-check failed for this page, but the crawl must continue.
+    log(`[click] ${url} -> click check stopped: ${String(err.message || err).split('\n')[0]}`);
   }
 
   const nav = result.results.filter((r) => r.status === 'navigated').length;
