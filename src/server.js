@@ -97,6 +97,7 @@ function buildConfigFromForm(form) {
     fullSite: !!form.fullSite,
     scanMode: form.scanMode === 'homeAllLinks' ? 'homeAllLinks' : 'full',
     postLoginStart: !!form.postLoginStart,
+    clickMode: !!form.clickMode,
     ai: (() => {
       // API key can come from the form OR from the OPENAI_API_KEY env var on the host.
       const key = (form.ai && form.ai.apiKey) || process.env.OPENAI_API_KEY || null;

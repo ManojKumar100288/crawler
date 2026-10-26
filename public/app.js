@@ -39,6 +39,7 @@ function collectForm() {
     includeSubdomains: $('includeSubdomains').checked,
     checkExternalLinks: $('checkExternalLinks').checked,
     useSitemap: $('useSitemap').checked,
+    clickMode: $('clickMode').checked,
     scanMode: $('scanMode').value,
   };
   if ($('aiEnabled').checked) {
@@ -88,6 +89,12 @@ function showSummary(payload) {
     cards.push(['Body', s.homeBodyLinks, '#a78bfa', '📰']);
   } else {
     cards.push(['Sitemap URLs', s.sitemapUrlsFound || 0, '#38bdf8', '🗺️']);
+  }
+  // Click-mode stats (only shown if click mode ran).
+  if ((s.clicksTotal || 0) > 0) {
+    cards.push(['Elements clicked', s.clicksTotal, '#06b6d4', '🖱️']);
+    cards.push(['Dead clicks', s.clicksDead || 0, '#f59e0b', '🚫']);
+    cards.push(['Clicks w/ JS error', s.clicksJsError || 0, '#ef4444', '⛔']);
   }
   statCards.innerHTML = cards
     .map(

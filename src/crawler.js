@@ -5,6 +5,7 @@ import { login } from './auth.js';
 import { inspectPage, checkLinkStatus } from './checks.js';
 import { collectSitemapUrls } from './sitemap.js';
 import { generateAiSummary } from './ai-summary.js';
+import { clickCheckPage } from './click-checks.js';
 
 /**
  * Run a full crawl + QA pass.
@@ -122,6 +123,18 @@ export async function crawl(cfg, log = console.log) {
 
     const pageResult = await inspectPage(context, item.url, cfg);
     pageResult.depth = item.depth;
+
+    // Optional click mode: physically click each element on this page.
+    if (cfg.clickMode) {
+      const clickRes = await clickCheckPage(context, item.url, cfg, log);
+      pageResult.click = {
+        clickable: clickRes.clickable,
+        results: clickRes.results,
+      };
+      // Merge click-found issues into the page's issues.
+      for (const iss of clickRes.issues) pageResult.issues.push(iss);
+    }
+
     report.pages.push(pageResult);
 
     if (item.depth >= cfg.maxDepth) return;
@@ -185,6 +198,14 @@ async function runHomeAllLinks(context, cfg, report, log) {
   log(`[home] inspecting home page: ${home}`);
   const homeResult = await inspectPage(context, home, cfg);
   homeResult.depth = 0;
+
+  // Optional click mode: physically click each element on the home page.
+  if (cfg.clickMode) {
+    const clickRes = await clickCheckPage(context, home, cfg, log);
+    homeResult.click = { clickable: clickRes.clickable, results: clickRes.results };
+    for (const iss of clickRes.issues) homeResult.issues.push(iss);
+  }
+
   report.pages.push(homeResult);
 
   // All links on the home page, tagged by region (header / footer / main).
@@ -270,6 +291,18 @@ function summarize(report) {
     blockedLinks = report.homeLinks.checked.filter((r) => r.blocked).length;
   }
 
+  // Count click-mode outcomes across all pages.
+  let clicksTotal = 0;
+  let clicksDead = 0;
+  let clicksJsError = 0;
+  for (const p of report.pages) {
+    if (p.click && Array.isArray(p.click.results)) {
+      clicksTotal += p.click.results.length;
+      clicksDead += p.click.results.filter((r) => r.status === 'dead').length;
+      clicksJsError += p.click.results.filter((r) => r.status === 'js-error').length;
+    }
+  }
+
   return {
     pagesCrawled: report.pages.length,
     pagesWithErrors: errorPages,
@@ -286,5 +319,8 @@ function summarize(report) {
     homeFooterLinks: report.homeLinks ? report.homeLinks.footer : 0,
     homeBodyLinks: report.homeLinks ? report.homeLinks.body : 0,
     blockedLinks,
+    clicksTotal,
+    clicksDead,
+    clicksJsError,
   };
 }

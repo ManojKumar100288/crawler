@@ -55,6 +55,10 @@ function parseArgs(argv) {
       out.cliOverrides.login.password = args[++i];
     } else if (a === '--post-login') {
       out.cliOverrides.postLoginStart = true;
+    } else if (a === '--click') {
+      out.cliOverrides.clickMode = true;
+    } else if (a === '--max-clicks') {
+      out.cliOverrides.maxClicksPerPage = Number(args[++i]);
     } else if (a.startsWith('--')) {
       console.warn(`Unknown flag ignored: ${a}`);
     } else {
@@ -93,6 +97,9 @@ Options:
       --password <pass>     Login password
       --post-login          Start crawl from the post-login page (check only the
                             authenticated area)
+      --click               Click mode: physically click every anchor/button on
+                            each page and record the result (slower, more thorough)
+      --max-clicks <n>      Max elements to click per page (default 60)
   -h, --help                Show this help
 
 Examples:
@@ -131,6 +138,11 @@ async function main() {
   console.log(`Clean pages:          ${s.cleanPages}`);
   console.log(`Total issues:         ${s.totalIssues}`);
   console.log(`Broken external links:${s.brokenExternalLinks}`);
+  if (s.clicksTotal > 0) {
+    console.log(`Elements clicked:     ${s.clicksTotal}`);
+    console.log(`Dead clicks:          ${s.clicksDead}`);
+    console.log(`Clicks w/ JS error:   ${s.clicksJsError}`);
+  }
   console.log('======================');
   if (report.aiSummary) {
     console.log('\n===== 🤖 AI SUMMARY =====');

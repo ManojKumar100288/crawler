@@ -35,6 +35,10 @@ const DEFAULTS = {
   // When true (and login succeeds), start the crawl from the post-login landing
   // page instead of the base URL — so it checks the authenticated area.
   postLoginStart: false,
+  // Click mode: physically click each anchor/button on every crawled page and
+  // record what happens (navigation, new tab, JS error, dead click).
+  clickMode: false,
+  maxClicksPerPage: 60,
   // AI-powered report summary (optional). Disabled unless an API key is set.
   ai: {
     enabled: false,
