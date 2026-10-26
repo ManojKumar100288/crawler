@@ -36,6 +36,10 @@ export async function clickCheckPage(context, url, cfg, log = () => {}) {
     return result;
   }
 
+  // Reveal hover/click dropdown menus so their sub-links are also captured
+  // (nav menus like "Quiz & Challenges ⌄" only show children after hover).
+  await revealMenus(page).catch(() => {});
+
   // Build a stable list of clickable descriptors we can re-find after each
   // navigation (clicking may navigate away, so we re-locate by index each time).
   const descriptors = await collectClickables(page, cfg);
@@ -97,11 +101,38 @@ export async function clickCheckPage(context, url, cfg, log = () => {}) {
   return result;
 }
 
+// The CSS selector covering all clickable element TYPES we test.
+// Includes: anchors, buttons, ARIA buttons/links/menuitems/tabs, onclick elements,
+// and common interactive roles. Plus (in JS below) any element with cursor:pointer.
+const CLICKABLE_SELECTOR =
+  'a, button, [role=button], [role=link], [role=menuitem], [role=tab], [onclick], input[type=button], input[type=submit], summary, label[for]';
+
+// The FULL element set we scan (indexes are computed against this exact set, so
+// clickOne must re-locate using the same selector to stay in sync).
+const SCAN_SELECTOR = CLICKABLE_SELECTOR + ', div, span, li, img';
+
+// Hover over (and briefly focus) likely dropdown-menu parents so their hidden
+// sub-menu links become visible and get included in the clickable list.
+async function revealMenus(page) {
+  const menuParents = page.locator(
+    'nav [aria-haspopup], nav .dropdown, nav .has-submenu, [class*=dropdown] > a, [class*=menu-item-has-children] > a, li:has(ul) > a'
+  );
+  const n = Math.min(await menuParents.count().catch(() => 0), 20);
+  for (let i = 0; i < n; i++) {
+    const p = menuParents.nth(i);
+    if (await p.isVisible({ timeout: 200 }).catch(() => false)) {
+      await p.hover({ timeout: 800 }).catch(() => {});
+      await page.waitForTimeout(150);
+    }
+  }
+}
+
 // Collect clickable element descriptors with enough info to re-find & report them.
 async function collectClickables(page, cfg) {
   return page.$$eval(
-    'a, button, [role=button], [onclick]',
-    (els, ignorePatternsStr) => {
+    SCAN_SELECTOR,
+    (els, args) => {
+      const { ignorePatternsStr, selector } = args;
       const ignoreRes = JSON.parse(ignorePatternsStr).map((p) => new RegExp(p, 'i'));
       const out = [];
       let idx = 0;
@@ -110,17 +141,44 @@ async function collectClickables(page, cfg) {
         const tag = el.tagName.toLowerCase();
         const href = el.getAttribute && el.getAttribute('href');
         const text = (el.textContent || '').trim().slice(0, 60);
-        // Skip obvious non-navigation anchors we intentionally ignore.
+
+        // Decide whether this element is actually "clickable".
+        // 1. It matches a known clickable selector (a/button/role/onclick/etc.), OR
+        // 2. It is a div/span/li/img that visually behaves as clickable
+        //    (cursor:pointer) and has a click-ish listener hint.
+        const isKnown = el.matches(selector);
+        let isPointer = false;
+        if (!isKnown) {
+          const style = window.getComputedStyle(el);
+          // cursor:pointer is the strongest generic signal of a clickable element.
+          if (style.cursor === 'pointer') isPointer = true;
+          // Skip plain divs/spans that merely contain other clickables (avoid noise):
+          if (isPointer) {
+            const hasClickableChild = el.querySelector('a, button, [role=button], [onclick]');
+            if (hasClickableChild) isPointer = false;
+          }
+        }
+        if (!isKnown && !isPointer) continue;
+
+        // Skip anchors whose href matches the ignore list (assets, logout, etc.).
         if (href && ignoreRes.some((re) => re.test(href))) continue;
-        // Skip elements that are not visible.
+
+        // Skip invisible elements.
         const rect = el.getBoundingClientRect();
         const visible = rect.width > 0 && rect.height > 0;
         if (!visible) continue;
-        out.push({ index: idx - 1, tag, href: href || null, text });
+
+        out.push({
+          index: idx - 1,
+          tag,
+          href: href || null,
+          text,
+          kind: isKnown ? 'standard' : 'pointer',
+        });
       }
       return out;
     },
-    JSON.stringify(cfg.ignorePatterns || [])
+    { ignorePatternsStr: JSON.stringify(cfg.ignorePatterns || []), selector: CLICKABLE_SELECTOR }
   );
 }
 
@@ -128,8 +186,8 @@ async function collectClickables(page, cfg) {
 async function clickOne(page, context, d, cfg) {
   const base = { selector: `${d.tag}#${d.index}`, text: d.text, href: d.href, status: 'same-page', detail: '' };
 
-  // Re-locate the element by index among the same element set.
-  const locator = page.locator('a, button, [role=button], [onclick]').nth(d.index);
+  // Re-locate the element by index among the SAME element set used to collect it.
+  const locator = page.locator(SCAN_SELECTOR).nth(d.index);
   if (!(await locator.count().catch(() => 0))) {
     return { ...base, status: 'click-failed', detail: 'element no longer present' };
   }
