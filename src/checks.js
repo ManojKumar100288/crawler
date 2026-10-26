@@ -99,16 +99,21 @@ export async function inspectPage(context, url, cfg) {
     });
   }
 
-  // Console + JS errors -> issues.
+  // Console messages are NOT real QA issues (mostly CSP/font/analytics noise from
+  // the site's own code). Record them as "notice" (informational), not warnings.
   for (const e of consoleErrors) {
-    result.issues.push({ severity: 'warning', type: 'console', message: e });
+    result.issues.push({ severity: 'notice', type: 'console', message: e });
   }
+  // Uncaught JavaScript exceptions ARE real issues.
   for (const e of pageErrors) {
     result.issues.push({ severity: 'error', type: 'js-exception', message: e });
   }
+  // Failed requests are often transient (timing, slow CDN, lazy-loaded assets).
+  // Record them as "notice" so they don't inflate the real-issue count. A truly
+  // broken page resource will also surface via broken-image / HTTP checks.
   for (const fr of failedRequests) {
     result.issues.push({
-      severity: 'warning',
+      severity: 'notice',
       type: 'failed-request',
       message: `${fr.method} ${fr.url} -> ${fr.error}`,
     });

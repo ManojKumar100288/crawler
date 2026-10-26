@@ -271,14 +271,22 @@ function summarize(report) {
   const byType = {};
   let brokenExternal = 0;
 
+  let notices = 0;
+  const noticesByType = {};
   for (const p of report.pages) {
     const hasError = p.issues.some((i) => i.severity === 'error');
     const hasWarn = p.issues.some((i) => i.severity === 'warning');
     if (hasError) errorPages++;
     else if (hasWarn) warnPages++;
     for (const issue of p.issues) {
-      totalIssues++;
-      byType[issue.type] = (byType[issue.type] || 0) + 1;
+      // "notice" and "info" are informational — not counted as real issues.
+      if (issue.severity === 'notice' || issue.severity === 'info') {
+        notices++;
+        noticesByType[issue.type] = (noticesByType[issue.type] || 0) + 1;
+      } else {
+        totalIssues++;
+        byType[issue.type] = (byType[issue.type] || 0) + 1;
+      }
     }
   }
   for (const l of report.externalLinks) {
@@ -310,6 +318,8 @@ function summarize(report) {
     cleanPages: report.pages.length - errorPages - warnPages,
     totalIssues,
     issuesByType: byType,
+    notices,
+    noticesByType,
     externalLinksChecked: report.externalLinks.length,
     brokenExternalLinks: brokenExternal,
     sitemapUsed: report.sitemap ? report.sitemap.used : false,

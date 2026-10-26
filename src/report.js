@@ -10,7 +10,7 @@ function esc(s) {
     .replace(/"/g, '&quot;');
 }
 
-const SEVERITY_ORDER = { error: 0, warning: 1, info: 2 };
+const SEVERITY_ORDER = { error: 0, warning: 1, info: 2, notice: 3 };
 
 /**
  * Write JSON + HTML reports to disk. Returns { jsonPath, htmlPath }.
@@ -30,7 +30,7 @@ export function writeReports(report, cfg) {
 }
 
 function badge(severity) {
-  const colors = { error: '#d33', warning: '#e6a100', info: '#0a7', clean: '#2a2' };
+  const colors = { error: '#d33', warning: '#e6a100', info: '#0a7', notice: '#64748b', clean: '#2a2' };
   return `<span style="background:${colors[severity] || '#888'};color:#fff;padding:2px 8px;border-radius:10px;font-size:12px">${esc(severity)}</span>`;
 }
 
@@ -45,12 +45,11 @@ function renderHtml(report, cfg) {
 
   const pageRows = sortedPages
     .map((p, idx) => {
-      const worst = p.issues.reduce(
-        (acc, i) => Math.min(acc, SEVERITY_ORDER[i.severity] ?? 3),
-        p.issues.length ? 3 : 4
-      );
-      const status =
-        worst === 0 ? 'error' : worst === 1 ? 'warning' : worst === 2 ? 'info' : 'clean';
+      // Only error/warning count toward the page's result badge. Pages with
+      // just notices/info are considered clean.
+      const hasError = p.issues.some((i) => i.severity === 'error');
+      const hasWarn = p.issues.some((i) => i.severity === 'warning');
+      const status = hasError ? 'error' : hasWarn ? 'warning' : 'clean';
       const issuesHtml = p.issues.length
         ? `<ul>${p.issues
             .map((i) => `<li>${badge(i.severity)} <b>${esc(i.type)}</b>: ${esc(i.message)}</li>`)
@@ -76,6 +75,11 @@ function renderHtml(report, cfg) {
     : '<em>No broken external links found.</em>';
 
   const typeRows = Object.entries(s.issuesByType || {})
+    .sort((a, b) => b[1] - a[1])
+    .map(([t, c]) => `<tr><td>${esc(t)}</td><td>${c}</td></tr>`)
+    .join('');
+
+  const noticeRows = Object.entries(s.noticesByType || {})
     .sort((a, b) => b[1] - a[1])
     .map(([t, c]) => `<tr><td>${esc(t)}</td><td>${c}</td></tr>`)
     .join('');
@@ -111,14 +115,20 @@ function renderHtml(report, cfg) {
     <div class="card"><b style="color:#d33">${s.pagesWithErrors}</b><span>Pages with errors</span></div>
     <div class="card"><b style="color:#e6a100">${s.pagesWithWarnings}</b><span>Pages with warnings</span></div>
     <div class="card"><b style="color:#2a2">${s.cleanPages}</b><span>Clean pages</span></div>
-    <div class="card"><b>${s.totalIssues}</b><span>Total issues</span></div>
+    <div class="card"><b>${s.totalIssues}</b><span>Real issues</span></div>
     <div class="card"><b style="color:#d33">${s.brokenExternalLinks}</b><span>Broken external links</span></div>
+    <div class="card"><b style="color:#64748b">${s.notices ?? 0}</b><span>Notices (console/requests)</span></div>
   </div>
 
   ${report.aiSummary ? `<h2>🤖 AI Summary</h2><div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:16px 20px;margin:12px 0;color:#0c4a6e;line-height:1.6;font-size:14px;white-space:pre-wrap">${esc(report.aiSummary)}</div>` : ''}
 
-  <h2>Issues by type</h2>
-  <table><thead><tr><th>Type</th><th>Count</th></tr></thead><tbody>${typeRows || '<tr><td colspan=2><em>None</em></td></tr>'}</tbody></table>
+  <h2>Real issues by type</h2>
+  <p style="color:#64748b;font-size:13px;margin:4px 0 8px">Things that likely need attention: broken links/images, JavaScript errors, HTTP errors, slow pages, dead clicks.</p>
+  <table><thead><tr><th>Type</th><th>Count</th></tr></thead><tbody>${typeRows || '<tr><td colspan=2><em>No real issues found 🎉</em></td></tr>'}</tbody></table>
+
+  <h2>Notices (not counted as issues)</h2>
+  <p style="color:#64748b;font-size:13px;margin:4px 0 8px">Informational only — mostly the site's own console messages (CSP/font/analytics) and transient failed requests from page load. These usually do not indicate a real problem.</p>
+  <table><thead><tr><th>Type</th><th>Count</th></tr></thead><tbody>${noticeRows || '<tr><td colspan=2><em>None</em></td></tr>'}</tbody></table>
 
   <h2>Pages (${report.pages.length})</h2>
   <table>
