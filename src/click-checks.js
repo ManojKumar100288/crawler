@@ -36,6 +36,11 @@ export async function clickCheckPage(context, url, cfg, log = () => {}) {
     return result;
   }
 
+  // Dismiss any overlay/popup/modal that would intercept clicks (podcast promo,
+  // cookie banner, ad, etc.). Without this, every click times out because the
+  // overlay sits on top of the page.
+  await dismissOverlays(page, log).catch(() => {});
+
   // Reveal hover/click dropdown menus so their sub-links are also captured
   // (nav menus like "Quiz & Challenges ⌄" only show children after hover).
   await revealMenus(page).catch(() => {});
@@ -110,6 +115,54 @@ const CLICKABLE_SELECTOR =
 // The FULL element set we scan (indexes are computed against this exact set, so
 // clickOne must re-locate using the same selector to stay in sync).
 const SCAN_SELECTOR = CLICKABLE_SELECTOR + ', div, span, li, img';
+
+// Close/dismiss blocking overlays & modal popups so clicks aren't intercepted.
+async function dismissOverlays(page, log) {
+  const closeSelectors = [
+    '.modal.show button.close',
+    '.modal.show [data-dismiss=modal]',
+    '.modal.show [data-bs-dismiss=modal]',
+    '[class*=modal][class*=show] button[aria-label=Close i]',
+    'button[aria-label=Close i]',
+    'button.close',
+    '.close-button',
+    '[class*=popup] [class*=close]',
+    '[class*=modal] [class*=close]',
+    '[id*=popup] [class*=close]',
+  ];
+  let closed = 0;
+  for (const sel of closeSelectors) {
+    try {
+      const els = page.locator(sel);
+      const n = await els.count().catch(() => 0);
+      for (let i = 0; i < n; i++) {
+        const el = els.nth(i);
+        if (await el.isVisible({ timeout: 200 }).catch(() => false)) {
+          await el.click({ force: true, timeout: 1500 }).catch(() => {});
+          closed++;
+        }
+      }
+    } catch { /* ignore */ }
+  }
+  // Press Escape a couple of times to close any remaining modal.
+  await page.keyboard.press('Escape').catch(() => {});
+  await page.keyboard.press('Escape').catch(() => {});
+  // Remove leftover full-screen overlay/backdrop elements that still intercept clicks.
+  await page.evaluate(() => {
+    const kill = (el) => { try { el.remove(); } catch {} };
+    document.querySelectorAll('.modal-backdrop, .modal.show, [class*=overlay], [class*=backdrop]').forEach((el) => {
+      const s = getComputedStyle(el);
+      // Only remove elements that actually cover the viewport.
+      const r = el.getBoundingClientRect();
+      if ((s.position === 'fixed' || s.position === 'absolute') && r.width > window.innerWidth * 0.6 && r.height > window.innerHeight * 0.6) {
+        kill(el);
+      }
+    });
+    // Restore scroll in case a modal locked the body.
+    document.body.style.overflow = '';
+  }).catch(() => {});
+  if (closed > 0 && log) log(`[click] dismissed ${closed} overlay/popup element(s) before clicking`);
+}
 
 // Hover over (and briefly focus) likely dropdown-menu parents so their hidden
 // sub-menu links become visible and get included in the clickable list.
@@ -198,18 +251,33 @@ async function clickOne(page, context, d, cfg) {
   const urlBefore = page.url();
   let newPage = null;
 
+  // Bring the element into view so it can be clicked.
+  await locator.scrollIntoViewIfNeeded({ timeout: 1500 }).catch(() => {});
+
   // Listen for a possible new tab opened by the click.
   const popupPromise = context
     .waitForEvent('page', { timeout: 2500 })
     .then((p) => { newPage = p; return p; })
     .catch(() => null);
 
+  // Try a normal click first; if it times out (e.g. an overlay intercepts it),
+  // dismiss overlays and retry with a forced click so we don't falsely report
+  // "click-failed".
+  let clickErr = null;
   try {
-    await locator.click({ timeout: 4000 });
-  } catch (err) {
+    await locator.click({ timeout: 3000 });
+  } catch {
+    await dismissOverlays(page, null).catch(() => {});
+    try {
+      await locator.click({ force: true, timeout: 2500 });
+    } catch (err2) {
+      clickErr = err2;
+    }
+  }
+  if (clickErr) {
     await popupPromise.catch(() => {});
     if (newPage) { await newPage.close().catch(() => {}); return { ...base, status: 'new-tab', detail: 'opened new tab' }; }
-    return { ...base, status: 'click-failed', detail: err.message.split('\n')[0].slice(0, 120) };
+    return { ...base, status: 'click-failed', detail: clickErr.message.split('\n')[0].slice(0, 120) };
   }
 
   // Give the click a moment to cause navigation / a new tab / DOM change.
